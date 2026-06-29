@@ -274,7 +274,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (restartButton) {
     restartButton.addEventListener('click', () => {
       stopCameraScan();
-      startCameraScan();
+      startCameraPreview();
     });
   }
 
