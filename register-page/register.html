@@ -23,38 +23,7 @@
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
     </svg>
   </button>
-  <div class="register-container">
-    <div class="register-header">
-      <h1>Create Account</h1>
-      <p>Join the Retail POS System</p>
-    </div>
 
-    <div class="register-card">
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register - Retail POS System</title>
-  <link rel="stylesheet" href="register-styles.css" />
-</head>
-<body>
-  <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark and light mode">
-    <svg id="sunIcon" class="theme-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="5"></circle>
-      <line x1="12" y1="1" x2="12" y2="3"></line>
-      <line x1="12" y1="21" x2="12" y2="23"></line>
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-      <line x1="1" y1="12" x2="3" y2="12"></line>
-      <line x1="21" y1="12" x2="23" y2="12"></line>
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-    </svg>
-    <svg id="moonIcon" class="theme-icon" style="display: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-    </svg>
-  </button>
   <div class="register-container">
     <div class="register-header">
       <h1>Create Account</h1>
@@ -64,61 +33,26 @@
     <div class="register-card">
       <form class="register-form" id="registerForm" novalidate>
         <div class="form-group">
-          <label for="fullName">
-            <span>Full Name</span>
-          </label>
+          <label for="fullName"><span>Full Name</span></label>
           <div class="input-wrapper">
-            <input
-              id="fullName"
-              type="text"
-              placeholder="Enter your full name"
-              required
-              aria-invalid="false"
-              aria-describedby="fullNameError"
-            />
+            <input id="fullName" type="text" placeholder="Enter your full name" required aria-invalid="false" aria-describedby="fullNameError" />
           </div>
           <span class="error-message" id="fullNameError"></span>
         </div>
 
         <div class="form-group">
-          <label for="email">
-            <span>Email</span>
-          </label>
+          <label for="email"><span>Email</span></label>
           <div class="input-wrapper">
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              autocomplete="email"
-              required
-              aria-invalid="false"
-              aria-describedby="emailError"
-            />
+            <input id="email" type="email" placeholder="Enter your email" autocomplete="email" required aria-invalid="false" aria-describedby="emailError" />
           </div>
           <span class="error-message" id="emailError"></span>
         </div>
 
         <div class="form-group">
-          <label for="password">
-            <span>Password</span>
-          </label>
+          <label for="password"><span>Password</span></label>
           <div class="input-wrapper">
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password (min 6 characters)"
-              autocomplete="new-password"
-              required
-              aria-invalid="false"
-              aria-describedby="passwordError"
-            />
-            <button
-              type="button"
-              class="toggle-password"
-              id="togglePassword"
-              aria-label="Toggle password visibility"
-              aria-pressed="false"
-            >
+            <input id="password" type="password" placeholder="Enter your password (min 6 characters)" autocomplete="new-password" required aria-invalid="false" aria-describedby="passwordError" />
+            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility" aria-pressed="false">
               <svg id="eyeOpenIcon" class="password-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
@@ -133,26 +67,10 @@
         </div>
 
         <div class="form-group">
-          <label for="confirmPassword">
-            <span>Confirm Password</span>
-          </label>
+          <label for="confirmPassword"><span>Confirm Password</span></label>
           <div class="input-wrapper">
-            <input
-              id="confirmPassword"
-              type="password"
-              placeholder="Confirm your password"
-              autocomplete="new-password"
-              required
-              aria-invalid="false"
-              aria-describedby="confirmPasswordError"
-            />
-            <button
-              type="button"
-              class="toggle-password"
-              id="toggleConfirmPassword"
-              aria-label="Toggle password visibility"
-              aria-pressed="false"
-            >
+            <input id="confirmPassword" type="password" placeholder="Confirm your password" autocomplete="new-password" required aria-invalid="false" aria-describedby="confirmPasswordError" />
+            <button type="button" class="toggle-password" id="toggleConfirmPassword" aria-label="Toggle password visibility" aria-pressed="false">
               <svg id="eyeOpenIcon2" class="password-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
@@ -176,9 +94,7 @@
 
       <div class="login-section">
         <p>Already have an account?</p>
-        <button type="button" class="login-button" id="loginButton" aria-label="Go to login page">
-          Sign In
-        </button>
+        <button type="button" class="login-button" id="loginButton" aria-label="Go to login page">Sign In</button>
       </div>
     </div>
 

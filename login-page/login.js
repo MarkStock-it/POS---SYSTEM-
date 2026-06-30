@@ -115,22 +115,57 @@ function showToast(message, type = "error") {
   }, 3000);
 }
 
+function getStoredUsers() {
+  try {
+    return JSON.parse(localStorage.getItem("posUsers") || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function getUserByIdentifier(identifier) {
+  const normalized = identifier.trim().toLowerCase();
+  return getStoredUsers().find((user) => {
+    return user.email.toLowerCase() === normalized || user.username.toLowerCase() === normalized;
+  });
+}
+
+function setCurrentUser(user) {
+  localStorage.setItem("posCurrentUser", JSON.stringify(user));
+}
+
+function ensureDemoUserExists() {
+  const users = getStoredUsers();
+  if (!users.some((user) => user.email.toLowerCase() === "demo@pos.com")) {
+    users.push({
+      fullName: "Demo User",
+      email: "demo@pos.com",
+      username: "demouser",
+      password: "password",
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem("posUsers", JSON.stringify(users));
+  }
+}
+
+ensureDemoUserExists();
+
 // ============================================
 // FORM SUBMISSION
 // ============================================
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const email = emailInput.value.trim();
+  const identifier = emailInput.value.trim();
   const password = passwordInput.value;
 
-  // Validate email
-  if (!email) {
+  // Validate email / username
+  if (!identifier) {
     showFieldError(emailInput, "Email or username is required");
     emailInput.focus();
     return;
   }
-  if (!validateEmail(email)) {
+  if (!validateEmail(identifier)) {
     showFieldError(emailInput, "Please enter a valid email or username");
     emailInput.focus();
     return;
@@ -148,21 +183,31 @@ loginForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const user = getUserByIdentifier(identifier);
+  if (!user || user.password !== password) {
+    showFieldError(emailInput, "Invalid login credentials. Please try again.");
+    showFieldError(passwordInput, "Invalid login credentials.");
+    return;
+  }
+
   // Show loading state
   loginButton.classList.add("loading");
   loginButton.disabled = true;
   const spinner = loginButton.querySelector(".spinner");
   spinner.style.display = "block";
 
-  // Simulate API call
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setCurrentUser({
+      fullName: user.fullName,
+      email: user.email,
+      username: user.username,
+      loggedAt: new Date().toISOString(),
+    });
 
-    // Show success modal
     successModal.classList.add("show");
     showToast("Login successful! Redirecting to dashboard...", "success");
 
-    // Redirect immediately to the homepage relative to the current repo path
     const homeUrl = new URL("../home-page/index.html", window.location.href).href;
     setTimeout(() => {
       window.location.href = homeUrl;
@@ -179,7 +224,8 @@ loginForm.addEventListener("submit", async (e) => {
 // SIGNUP & FORGOT PASSWORD
 // ============================================
 signupButton.addEventListener("click", () => {
-  showToast("Sign up feature coming soon!", "error");
+  const registerUrl = new URL("../register-page/register.html", window.location.href).href;
+  window.location.href = registerUrl;
 });
 
 forgotPasswordLink.addEventListener("click", (e) => {

@@ -172,6 +172,29 @@ function showToast(message, type = "error") {
   }, 3000);
 }
 
+function getStoredUsers() {
+  try {
+    return JSON.parse(localStorage.getItem("posUsers") || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function setStoredUsers(users) {
+  localStorage.setItem("posUsers", JSON.stringify(users));
+}
+
+function userExists(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return getStoredUsers().some((user) => user.email.toLowerCase() === normalizedEmail);
+}
+
+function createUser(payload) {
+  const users = getStoredUsers();
+  users.push(payload);
+  setStoredUsers(users);
+}
+
 // ============================================
 // FORM SUBMISSION
 // ============================================
@@ -240,6 +263,23 @@ registerForm.addEventListener("submit", async (e) => {
   // Simulate API call
   try {
     await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    if (userExists(email)) {
+      registerButton.classList.remove("loading");
+      registerButton.disabled = false;
+      spinner.style.display = "none";
+      showToast("An account with that email already exists.", "error");
+      emailInput.focus();
+      return;
+    }
+
+    createUser({
+      fullName,
+      email,
+      username: email,
+      password,
+      createdAt: new Date().toISOString(),
+    });
 
     // Show success modal
     successModal.classList.add("show");
