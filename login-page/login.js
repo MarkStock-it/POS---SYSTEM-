@@ -117,7 +117,8 @@ function showToast(message, type = "error") {
 
 function getStoredUsers() {
   try {
-    return JSON.parse(localStorage.getItem("posUsers") || "[]");
+    const parsed = JSON.parse(localStorage.getItem("posUsers") || "[]");
+    return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     return [];
   }
@@ -212,11 +213,16 @@ loginForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const user = getUserByIdentifier(identifier);
+  let user = getUserByIdentifier(identifier);
   if (!user || user.password !== password) {
-    showFieldError(emailInput, "Invalid login credentials. Please try again.");
-    showFieldError(passwordInput, "Invalid login credentials.");
-    return;
+    try {
+      const backendUser = await window.authApi?.loginWithBackend?.(identifier, password);
+      user = backendUser;
+    } catch (error) {
+      showFieldError(emailInput, "Invalid login credentials. Please try again.");
+      showFieldError(passwordInput, "Invalid login credentials.");
+      return;
+    }
   }
 
   const normalizedRole = String(user.role || inferRoleFromIdentifier(identifier, "cashier")).trim().toLowerCase();
@@ -230,7 +236,7 @@ loginForm.addEventListener("submit", async (e) => {
   try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setCurrentUser({
-      fullName: user.fullName,
+      fullName: user.fullName || user.full_name || user.name || "",
       email: user.email,
       username: user.username,
       role: normalizedRole,

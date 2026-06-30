@@ -10,6 +10,7 @@ const togglePasswordBtn = document.getElementById("togglePassword");
 const toggleConfirmPasswordBtn = document.getElementById("toggleConfirmPassword");
 const registerButton = document.getElementById("registerButton");
 const loginButton = document.getElementById("loginButton");
+const roleInput = document.getElementById("role");
 const successModal = document.getElementById("successModal");
 const toast = document.getElementById("toast");
 
@@ -174,7 +175,8 @@ function showToast(message, type = "error") {
 
 function getStoredUsers() {
   try {
-    return JSON.parse(localStorage.getItem("posUsers") || "[]");
+    const parsed = JSON.parse(localStorage.getItem("posUsers") || "[]");
+    return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     return [];
   }
@@ -186,13 +188,24 @@ function setStoredUsers(users) {
 
 function userExists(email) {
   const normalizedEmail = email.trim().toLowerCase();
-  return getStoredUsers().some((user) => user.email.toLowerCase() === normalizedEmail);
+  return getStoredUsers().some((user) => String(user.email || "").toLowerCase() === normalizedEmail);
 }
 
 function createUser(payload) {
   const users = getStoredUsers();
-  users.push(payload);
+  const nextUser = {
+    id: payload.id || `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fullName: payload.fullName,
+    email: payload.email,
+    username: payload.username || payload.email,
+    password: payload.password,
+    role: payload.role || "cashier",
+    createdAt: payload.createdAt || new Date().toISOString(),
+  };
+
+  users.push(nextUser);
   setStoredUsers(users);
+  return nextUser;
 }
 
 // ============================================
@@ -205,6 +218,7 @@ registerForm.addEventListener("submit", async (e) => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
+  const role = roleInput.value || "cashier";
 
   // Validate full name
   if (!fullName) {
@@ -260,10 +274,7 @@ registerForm.addEventListener("submit", async (e) => {
   const spinner = registerButton.querySelector(".spinner");
   spinner.style.display = "block";
 
-  // Simulate API call
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     if (userExists(email)) {
       registerButton.classList.remove("loading");
       registerButton.disabled = false;
@@ -273,19 +284,26 @@ registerForm.addEventListener("submit", async (e) => {
       return;
     }
 
+    await window.authApi?.registerWithBackend?.({
+      fullName,
+      email,
+      username: email.split("@")[0],
+      password,
+      role,
+    });
+
     createUser({
       fullName,
       email,
-      username: email,
+      username: email.split("@")[0],
       password,
+      role,
       createdAt: new Date().toISOString(),
     });
 
-    // Show success modal
     successModal.classList.add("show");
     showToast("Account created successfully! Redirecting to login...", "success");
 
-    // Redirect to login page using GitHub Pages-compatible relative URL
     const loginUrl = new URL("../login-page/login.html", window.location.href).href;
     setTimeout(() => {
       window.location.href = loginUrl;
@@ -294,7 +312,7 @@ registerForm.addEventListener("submit", async (e) => {
     registerButton.classList.remove("loading");
     registerButton.disabled = false;
     spinner.style.display = "none";
-    showToast("Registration failed. Please try again.");
+    showToast(error.message || "Registration failed. Please try again.");
   }
 });
 

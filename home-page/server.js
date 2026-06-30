@@ -3,10 +3,14 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'pos.db');
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
+const MONGO_DB = process.env.MONGO_DB || 'pos_system';
+const MONGO_ENABLED = process.env.MONGO_ENABLED === 'true' || process.env.MONGO_URI;
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
@@ -14,6 +18,24 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     process.exit(1);
   }
 });
+
+let mongoClient = null;
+let mongoDb = null;
+
+async function connectMongo() {
+  if (!MONGO_ENABLED) return;
+  try {
+    mongoClient = await MongoClient.connect(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
+    mongoDb = mongoClient.db(MONGO_DB);
+    console.log(`MongoDB connected to ${MONGO_URI}/${MONGO_DB}`);
+  } catch (error) {
+    console.error('MongoDB connection failed:', error.message);
+    mongoClient = null;
+    mongoDb = null;
+  }
+}
+
+connectMongo();
 
 const sampleProducts = [
   { id: '0001', name: 'Bottled Water 500ml', sku: '0001', barcode: '100000001', category: 'Beverages', price: 1.25, stock: 50, image: '/images/water.jpg' },
@@ -28,7 +50,7 @@ const sampleProducts = [
 
 function initDatabase() {
   db.serialize(() => {
-    db.run(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -38,94 +60,115 @@ function initDatabase() {
         price REAL NOT NULL,
         stock INTEGER NOT NULL,
         image TEXT
-      )
-    `);
-
-    const ensureColumns = (callback) => {
-      db.all('PRAGMA table_info(products)', (err, columns) => {
-        if (err) return callback(err);
-
-        const existingNames = columns.map((column) => column.name);
-        const tasks = [];
-
-        if (!existingNames.includes('description')) {
-          tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN description TEXT', next));
-        }
-        if (!existingNames.includes('cost')) {
-          tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN cost REAL DEFAULT 0', next));
-        }
-        if (!existingNames.includes('threshold')) {
-          tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN threshold INTEGER DEFAULT 0', next));
-        }
-
-        const runNext = () => {
-          if (!tasks.length) return callback(null);
-          const task = tasks.shift();
-          task((taskErr) => {
-            if (taskErr) return callback(taskErr);
-            runNext();
-          });
-        };
-
-        runNext();
-      });
-    };
-
-    ensureColumns((ensureErr) => {
-      if (ensureErr) {
-        console.error('Failed to update product columns:', ensureErr.message);
-      }
-
-      db.run(`
-        CREATE TABLE IF NOT EXISTS transactions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          created_at TEXT DEFAULT (datetime('now')),
-          payment_method TEXT,
-          subtotal REAL,
-          discount REAL,
-          tax REAL,
-          total REAL
-        )
-      `);
-
-      db.run(`
-        CREATE TABLE IF NOT EXISTS transaction_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          transaction_id INTEGER,
-          product_id TEXT,
-          name TEXT,
-          sku TEXT,
-          unit_price REAL,
-          quantity INTEGER,
-          line_total REAL,
-          FOREIGN KEY (transaction_id) REFERENCES transactions(id)
-        )
-      `);
-
-      const insertOrReplace = db.prepare(
-        'INSERT OR REPLACE INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       );
 
-      sampleProducts.forEach((product) => {
-        insertOrReplace.run(
-          product.id,
-          product.name,
-          product.sku,
-          product.barcode,
-          product.category,
-          product.price,
-          product.stock,
-          product.image || null,
-          product.description || null,
-          product.cost || 0,
-          product.threshold || 0
-        );
-      });
+      CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT DEFAULT (datetime('now')),
+        payment_method TEXT,
+        subtotal REAL,
+        discount REAL,
+        tax REAL,
+        total REAL
+      );
 
-      insertOrReplace.finalize((finalizeErr) => {
-        if (finalizeErr) {
-          console.error('Failed to seed products:', finalizeErr.message);
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'cashier',
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS transaction_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER,
+        product_id TEXT,
+        name TEXT,
+        sku TEXT,
+        unit_price REAL,
+        quantity INTEGER,
+        line_total REAL,
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+      );
+    `, (execErr) => {
+      if (execErr) {
+        console.error('Failed to initialize database schema:', execErr.message);
+        return;
+      }
+
+      const ensureColumns = (callback) => {
+        db.all('PRAGMA table_info(products)', (err, columns) => {
+          if (err) return callback(err);
+
+          const existingNames = columns.map((column) => column.name);
+          const tasks = [];
+
+          if (!existingNames.includes('description')) {
+            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN description TEXT', next));
+          }
+          if (!existingNames.includes('cost')) {
+            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN cost REAL DEFAULT 0', next));
+          }
+          if (!existingNames.includes('threshold')) {
+            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN threshold INTEGER DEFAULT 0', next));
+          }
+
+          const runNext = () => {
+            if (!tasks.length) return callback(null);
+            const task = tasks.shift();
+            task((taskErr) => {
+              if (taskErr) return callback(taskErr);
+              runNext();
+            });
+          };
+
+          runNext();
+        });
+      };
+
+      ensureColumns((ensureErr) => {
+        if (ensureErr) {
+          console.error('Failed to update product columns:', ensureErr.message);
         }
+
+        db.run(`
+          INSERT OR IGNORE INTO users (full_name, email, username, password, role)
+          VALUES ('Super Admin Demo', 'superadmin@pos.com', 'superadmin', 'superadmin123', 'super-admin')
+        `);
+
+        db.run(`
+          INSERT OR IGNORE INTO users (full_name, email, username, password, role)
+          VALUES ('Demo User', 'demo@pos.com', 'demouser', 'password', 'cashier')
+        `);
+
+        const insertOrReplace = db.prepare(
+          'INSERT OR REPLACE INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+
+        sampleProducts.forEach((product) => {
+          insertOrReplace.run(
+            product.id,
+            product.name,
+            product.sku,
+            product.barcode,
+            product.category,
+            product.price,
+            product.stock,
+            product.image || null,
+            product.description || null,
+            product.cost || 0,
+            product.threshold || 0
+          );
+        });
+
+        insertOrReplace.finalize((finalizeErr) => {
+          if (finalizeErr) {
+            console.error('Failed to seed products:', finalizeErr.message);
+          }
+        });
       });
     });
   });
@@ -229,7 +272,148 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-app.get('/api/products', (req, res) => {
+app.get('/api/auth/users', async (req, res) => {
+  if (mongoDb) {
+    try {
+      const users = await mongoDb.collection('users').find({}, { projection: { _id: 0, password: 0 } }).sort({ createdAt: 1 }).toArray();
+      return res.json(users);
+    } catch (error) {
+      console.error('Failed to load users from MongoDB:', error.message);
+      return res.status(500).json({ error: 'Unable to load users' });
+    }
+  }
+
+  db.all('SELECT id, full_name AS fullName, email, username, role, created_at AS createdAt FROM users ORDER BY id ASC', [], (err, rows) => {
+    if (err) {
+      console.error('Failed to load users:', err.message);
+      return res.status(500).json({ error: 'Unable to load users' });
+    }
+    res.json(rows);
+  });
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const identifier = String(req.body.identifier || '').trim();
+  const password = String(req.body.password || '');
+
+  if (!identifier || !password) {
+    return res.status(400).json({ error: 'Identifier and password are required.' });
+  }
+
+  if (mongoDb) {
+    try {
+      const user = await mongoDb.collection('users').findOne({
+        $or: [
+          { email: identifier.toLowerCase() },
+          { username: identifier }
+        ]
+      });
+
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+      }
+
+      return res.json({
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      });
+    } catch (error) {
+      console.error('MongoDB login failed:', error.message);
+      return res.status(500).json({ error: 'Unable to authenticate.' });
+    }
+  }
+
+  db.get(
+    'SELECT id, full_name AS fullName, email, username, role, password FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?',
+    [identifier.toLowerCase(), identifier.toLowerCase()],
+    (err, user) => {
+      if (err) {
+        console.error('Login query failed:', err.message);
+        return res.status(500).json({ error: 'Unable to authenticate.' });
+      }
+
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+      }
+
+      res.json({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      });
+    }
+  );
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  const fullName = String(req.body.fullName || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const username = String(req.body.username || email.split('@')[0] || '').trim();
+  const password = String(req.body.password || '');
+  const role = String(req.body.role || 'cashier').trim().toLowerCase();
+
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: 'Full name, email, and password are required.' });
+  }
+
+  if (mongoDb) {
+    try {
+      const existing = await mongoDb.collection('users').findOne({ $or: [{ email }, { username }] });
+      if (existing) {
+        return res.status(409).json({ error: 'That email or username already exists.' });
+      }
+
+      const result = await mongoDb.collection('users').insertOne({
+        fullName,
+        email,
+        username,
+        password,
+        role,
+        createdAt: new Date()
+      });
+
+      return res.status(201).json({
+        id: result.insertedId.toString(),
+        fullName,
+        email,
+        username,
+        role,
+      });
+    } catch (error) {
+      console.error('MongoDB registration failed:', error.message);
+      return res.status(500).json({ error: 'Unable to create account.' });
+    }
+  }
+
+  db.run(
+    'INSERT INTO users (full_name, email, username, password, role) VALUES (?, ?, ?, ?, ?)',
+    [fullName, email, username, password, role],
+    function (err) {
+      if (err) {
+        if (err.message.includes('UNIQUE')) {
+          return res.status(409).json({ error: 'That email or username already exists.' });
+        }
+        console.error('Registration failed:', err.message);
+        return res.status(500).json({ error: 'Unable to create account.' });
+      }
+
+      res.status(201).json({
+        id: this.lastID,
+        fullName,
+        email,
+        username,
+        role,
+      });
+    }
+  );
+});
+
+app.get('/api/products', async (req, res) => {
   const search = String(req.query.search || '').trim();
   const category = String(req.query.category || 'all').trim().toLowerCase();
   const barcode = String(req.query.barcode || '').trim();
@@ -266,6 +450,35 @@ app.get('/api/products', (req, res) => {
   }
 
   sql += ' ORDER BY name COLLATE NOCASE';
+
+  if (mongoDb) {
+    try {
+      const filter = {};
+      if (barcode) filter.barcode = barcode;
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { sku: { $regex: search, $options: 'i' } },
+          { barcode: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } }
+        ];
+      }
+      if (category && category !== 'all') {
+        filter.category = new RegExp(`^${category}$`, 'i');
+      }
+      if (stockFilter === 'low') {
+        filter.stock = { $gt: 0, $lte: 10 };
+      } else if (stockFilter === 'out') {
+        filter.stock = { $eq: 0 };
+      }
+
+      const rows = await mongoDb.collection('products').find(filter).sort({ name: 1 }).toArray();
+      return res.json(rows.map((row) => ({ ...row, id: row._id.toString() })));
+    } catch (error) {
+      console.error('MongoDB product query failed:', error.message);
+      return res.status(500).json({ error: 'Unable to load products' });
+    }
+  }
 
   db.all(sql, params, (err, rows) => {
     if (err) {
