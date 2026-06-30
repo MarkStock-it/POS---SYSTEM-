@@ -678,12 +678,15 @@ function saveProduct() {
     return;
   }
 
+  const existingProduct = state.products.find((product) => product.sku === sku || product.barcode === sku);
+  const barcode = existingProduct ? `${sku}-${Date.now().toString().slice(-6)}` : sku;
+
   const payload = {
     name,
     description: document.getElementById('productDescription').value.trim(),
     category,
     sku,
-    barcode: sku,
+    barcode,
     price,
     stock,
     cost: Number(document.getElementById('productCost').value) || 0,

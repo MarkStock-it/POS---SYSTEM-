@@ -178,6 +178,15 @@ initDatabase();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, x-pos-pin');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname)));
 
 // Simple PIN-based middleware for protected routes
@@ -496,12 +505,17 @@ function handleProductsRequest(req, res) {
 function createProduct(req, res) {
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
 
-  if (!name || !sku || !barcode || !category) {
-    return res.status(400).json({ error: 'Name, SKU, barcode, and category are required.' });
+  const normalizedName = String(name || '').trim();
+  const normalizedSku = String(sku || '').trim();
+  const normalizedBarcode = String(barcode || normalizedSku || '').trim();
+  const normalizedCategory = String(category || '').trim();
+
+  if (!normalizedName || !normalizedSku || !normalizedCategory) {
+    return res.status(400).json({ error: 'Name, SKU, and category are required.' });
   }
 
   const id = Date.now().toString();
-  const product = [id, name, sku, barcode, category, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0];
+  const product = [id, normalizedName, normalizedSku, normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, normalizedCategory, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0];
 
   db.run(
     'INSERT INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -509,14 +523,21 @@ function createProduct(req, res) {
     function (err) {
       if (err) {
         console.error('Insert product failed:', err.message);
+        if (err.code === 'SQLITE_CONSTRAINT') {
+          return res.status(409).json({ error: 'A product with this SKU or barcode already exists. Please choose a different value.' });
+        }
         return res.status(500).json({ error: 'Unable to save product.' });
       }
-      res.json({ id, ...req.body });
+      res.json({ id, name: normalizedName, sku: normalizedSku, barcode: normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, category: normalizedCategory, price: Number(price) || 0, stock: Number(stock) || 0, image: image || '/images/placeholder.svg', description: description || '', cost: Number(cost) || 0, threshold: Number(threshold) || 0 });
     }
   );
 }
 
 function handleProductsCollectionRoute(req, res) {
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
   if (req.method === 'GET') {
     return handleProductsRequest(req, res);
   }
