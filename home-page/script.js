@@ -435,8 +435,15 @@ function clearCart() {
 }
 
 function logoutFromHome() {
-  localStorage.removeItem('posCurrentUser');
-  window.location.href = '../login-page/login.html';
+  try {
+    localStorage.removeItem('posCurrentUser');
+    sessionStorage.removeItem('posCurrentUser');
+  } catch (error) {
+    console.warn('Logout cleanup failed:', error);
+  }
+
+  const loginUrl = `${window.location.origin}/login-page/login.html`;
+  window.location.replace(loginUrl);
 }
 
 function getApiHeaders(extraHeaders = {}) {
