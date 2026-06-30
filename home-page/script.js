@@ -434,6 +434,43 @@ function clearCart() {
   showToast('Cart cleared successfully');
 }
 
+function getApiHeaders(extraHeaders = {}) {
+  return {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    'x-pos-pin': '1234',
+    ...extraHeaders,
+  };
+}
+
+async function parseJsonResponse(response) {
+  const text = await response.text();
+  if (!response.ok) {
+    let message = 'Request failed';
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.error) {
+        message = parsed.error;
+      }
+    } catch (error) {
+      if (text) {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error('The server returned an invalid response.');
+  }
+}
+
 function holdTransaction() {
   if (!state.cart.length) {
     showToast('No items to hold', 'danger');
@@ -450,21 +487,9 @@ function fetchProducts() {
   if (state.activeStockFilter && state.activeStockFilter !== 'all') query.set('stock', state.activeStockFilter);
 
   return fetch(`/products?${query.toString()}`, {
-    headers: { Accept: 'application/json' },
+    headers: getApiHeaders(),
   })
-    .then(async (response) => {
-      const text = await response.text();
-      if (!response.ok) {
-        throw new Error(`Products request failed with ${response.status}`);
-      }
-      if (!text) return [];
-
-      try {
-        return JSON.parse(text);
-      } catch (error) {
-        throw new Error('Products endpoint returned invalid JSON');
-      }
-    })
+    .then(parseJsonResponse)
     .then((products) => {
       state.products = Array.isArray(products) ? products : [];
       renderCategoryPills();
@@ -641,10 +666,10 @@ function saveProduct() {
 
   fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify(payload),
   })
-    .then((response) => response.json())
+    .then(parseJsonResponse)
     .then((result) => {
       if (result.error) {
         throw new Error(result.error);
@@ -671,8 +696,11 @@ function editProduct(id) {
 function deleteProduct(id) {
   if (!confirm('Delete this product from inventory?')) return;
 
-  fetch(`/api/products/${id}`, { method: 'DELETE' })
-    .then((response) => response.json())
+  fetch(`/api/products/${id}`, {
+    method: 'DELETE',
+    headers: getApiHeaders(),
+  })
+    .then(parseJsonResponse)
     .then((result) => {
       if (result.error) {
         throw new Error(result.error);
@@ -706,10 +734,10 @@ function processPayment(paymentMethod) {
 
   fetch('/api/checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify(payload),
   })
-    .then((response) => response.json())
+    .then(parseJsonResponse)
     .then((result) => {
       if (result.error) {
         throw new Error(result.error);
