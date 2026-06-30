@@ -159,6 +159,14 @@ function ensureDemoUserExists() {
       createdAt: new Date().toISOString(),
     },
     {
+      fullName: "Manager Demo",
+      email: "manager@pos.com",
+      username: "manager",
+      password: "manager123",
+      role: "manager",
+      createdAt: new Date().toISOString(),
+    },
+    {
       fullName: "Super Admin Demo",
       email: "superadmin@pos.com",
       username: "superadmin",
