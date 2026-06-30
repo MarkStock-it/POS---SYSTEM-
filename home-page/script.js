@@ -633,14 +633,47 @@ function previewProductImage(event) {
 }
 
 function saveProduct() {
+  const name = document.getElementById('productName').value.trim();
+  const category = document.getElementById('productCategory').value.trim();
+  const sku = document.getElementById('productSku').value.trim();
+  const priceValue = document.getElementById('productPrice').value.trim();
+  const stockValue = document.getElementById('productStock').value.trim();
+  const price = Number(priceValue);
+  const stock = Number(stockValue);
+
+  if (!name) {
+    showToast('Please enter a product name.', 'danger');
+    return;
+  }
+
+  if (!category) {
+    showToast('Please enter a category.', 'danger');
+    return;
+  }
+
+  if (!sku) {
+    showToast('Please enter a SKU or barcode.', 'danger');
+    return;
+  }
+
+  if (!Number.isFinite(price) || price < 0) {
+    showToast('Please enter a valid selling price.', 'danger');
+    return;
+  }
+
+  if (!Number.isFinite(stock) || stock < 0) {
+    showToast('Please enter a valid stock quantity.', 'danger');
+    return;
+  }
+
   const payload = {
-    name: document.getElementById('productName').value.trim(),
+    name,
     description: document.getElementById('productDescription').value.trim(),
-    category: document.getElementById('productCategory').value.trim(),
-    sku: document.getElementById('productSku').value.trim(),
-    barcode: document.getElementById('productSku').value.trim(),
-    price: Number(document.getElementById('productPrice').value) || 0,
-    stock: Number(document.getElementById('productStock').value) || 0,
+    category,
+    sku,
+    barcode: sku,
+    price,
+    stock,
     cost: Number(document.getElementById('productCost').value) || 0,
     threshold: Number(document.getElementById('productThreshold').value) || 0,
     // Don't persist base64 data URIs into SQLite. If the user pasted a
@@ -655,11 +688,6 @@ function saveProduct() {
       return url;
     })(),
   };
-
-  if (!payload.name || !payload.category || !payload.sku) {
-    showToast('Product name, category, and SKU are required.', 'danger');
-    return;
-  }
 
   const url = state.editingProductId ? `/api/products/${state.editingProductId}` : '/api/products';
   const method = state.editingProductId ? 'PUT' : 'POST';
