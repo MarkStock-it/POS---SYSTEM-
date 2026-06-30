@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarkStock-it | Manager</title>
+<style>
+  :root {
+    --bg-void: #0a0b0d;
+    --bg-panel: #111316;
+    --bg-panel-raised: #16191d;
+    --bg-hover: #1c2024;
+    --border-hairline: #24282e;
+    --text-primary: #eceef0;
+    --text-secondary: #8b9098;
+    --text-tertiary: #565b62;
+    --accent-green: #4caf7d;
+    --accent-green-dim: #1d3326;
+    --status-green: #4caf7d;
+    --status-red: #e0584f;
+    --status-amber: #d4a843;
+    --font-display: 'IBM Plex Mono', 'Courier New', monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: 64px 1fr;
+    grid-template-areas:
+      "sidebar topbar"
+      "sidebar main";
+  }
+
+  /* ---------- TOP BAR ---------- */
+  .topbar {
+    grid-area: topbar;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-hairline);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+  }
+
+  .topbar-clearance {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .clearance-badge {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bg-void);
+    background: var(--accent-green);
+    padding: 4px 10px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+
+  .topbar-breadcrumb {
+    color: var(--text-tertiary);
+    font-size: 13px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .session-info {
+    text-align: right;
+    line-height: 1.3;
+  }
+
+  .session-info .name {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .session-info .role {
+    font-size: 11px;
+    color: var(--accent-green);
+    letter-spacing: 0.04em;
+  }
+
+  .avatar-ring {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--accent-green);
+    cursor: pointer;
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-hairline);
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 20px 0;
+  }
+
+  .brand {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent-green);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg-void);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 13px;
+  }
+
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+  }
+
+  .nav-section {
+    padding: 20px 12px 4px;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 0 12px 8px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 13.5px;
+    margin-bottom: 2px;
+    border-left: 2px solid transparent;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  .nav-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .nav-item.active {
+    background: var(--bg-hover);
+    color: var(--accent-green);
+    border-left: 2px solid var(--accent-green);
+  }
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  .nav-footer {
+    margin-top: auto;
+    padding: 16px 24px 0;
+    border-top: 1px solid var(--border-hairline);
+  }
+
+  .nav-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-tertiary);
+    font-size: 12.5px;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+
+  .nav-footer-item:hover { color: var(--status-red); }
+
+  /* ---------- MAIN ---------- */
+  .main {
+    grid-area: main;
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  .btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.12s ease;
+  }
+
+  .btn:hover { opacity: 0.88; }
+
+  .btn-green {
+    background: var(--accent-green);
+    color: var(--bg-void);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-hairline);
+    color: var(--text-secondary);
+  }
+
+  /* ---------- METRIC GRID ---------- */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .metric-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-hairline);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .metric-delta { font-size: 12px; }
+  .metric-delta.up { color: var(--status-green); }
+  .metric-delta.down { color: var(--status-red); }
+
+  /* ---------- PANEL / TABLE ---------- */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-hairline);
+    border-radius: 10px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .panel-title-sub {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-hairline);
+    font-weight: 600;
+  }
+
+  tbody td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-hairline);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--bg-hover); }
+
+  .cell-primary { color: var(--text-primary); font-weight: 600; }
+
+  .txn-amount {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 5px;
+  }
+
+  .status-pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status-pill.completed { background: rgba(76,175,125,0.12); color: var(--status-green); }
+  .status-pill.flagged { background: rgba(212,168,67,0.12); color: var(--status-amber); }
+  .status-pill.voided { background: rgba(224,88,79,0.12); color: var(--status-red); }
+
+  .row-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--border-hairline);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .icon-btn.danger:hover { background: rgba(224,88,79,0.12); color: var(--status-red); border-color: var(--status-red); }
+
+  .btn-void {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--status-red);
+    background: transparent;
+    color: var(--status-red);
+    cursor: pointer;
+  }
+  .btn-void:hover { background: rgba(224,88,79,0.1); }
+
+  .btn-override {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--status-amber);
+    background: transparent;
+    color: var(--status-amber);
+    cursor: pointer;
+  }
+  .btn-override:hover { background: rgba(212,168,67,0.1); }
+
+  /* ---------- INVENTORY ---------- */
+  .stock-bar-track {
+    width: 80px;
+    height: 5px;
+    background: var(--border-hairline);
+    border-radius: 3px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  .stock-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  .stock-bar-fill.healthy { background: var(--status-green); }
+  .stock-bar-fill.low { background: var(--status-amber); }
+  .stock-bar-fill.critical { background: var(--status-red); }
+
+  .stock-label { font-size: 12px; color: var(--text-tertiary); }
+
+  /* ---------- LOWER GRID ---------- */
+  .lower-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .report-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+  .report-item:last-child { border-bottom: none; }
+
+  .report-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .report-meta { font-size: 11.5px; color: var(--text-tertiary); }
+
+  .placeholder-fn {
+    font-family: var(--font-display);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    border: 1px dashed var(--border-hairline);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">MS</div>
+      <div class="brand-name">MARKSTOCK-IT</div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item active"><span class="nav-icon">▣</span> Dashboard</a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item"><span class="nav-icon">⇄</span> Transactions</a>
+      <a class="nav-item"><span class="nav-icon">▦</span> Inventory</a>
+      <a class="nav-item"><span class="nav-icon">▥</span> Reports</a>
+    </nav>
+
+    <div class="nav-footer">
+      <div class="nav-footer-item" onclick="fnLogout()">⏻ Log out</div>
+    </div>
+  </aside>
+
+  <!-- ================= TOPBAR ================= -->
+  <header class="topbar">
+    <div class="topbar-clearance">
+      <span class="clearance-badge">Manager</span>
+      <span class="topbar-breadcrumb">/ Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost" onclick="fnOpenNotifications()">🔔 <span class="placeholder-fn">fnNotif()</span></button>
+      <div class="session-info">
+        <div class="name" id="currentUserName">Jhona Reyes</div>
+        <div class="role" id="currentRoleBadge">MANAGER</div>
+      </div>
+      <div class="avatar-ring" onclick="fnOpenProfileMenu()">JR</div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ================= -->
+  <main class="main">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title">Floor Overview</div>
+        <div class="page-subtitle">Monitor transactions, manage inventory, void or override sales</div>
+      </div>
+      <button class="btn btn-green" onclick="fnGenerateReport()">Generate Report</button>
+    </div>
+
+    <!-- METRICS -->
+    <section class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Today's Sales</div>
+        <div class="metric-value" id="metricRevenue">₱48,210</div>
+        <div class="metric-delta up">▲ 12.4% vs yesterday</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Transactions Needing Action</div>
+        <div class="metric-value" id="metricFlags">2</div>
+        <div class="metric-delta down">Flagged for review</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Low Stock Items</div>
+        <div class="metric-value" id="metricLowStock">5</div>
+        <div class="metric-delta down">Reorder recommended</div>
+      </div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Transactions</div>
+          <div class="panel-title-sub">Void or override as needed</div>
+        </div>
+        <span class="placeholder-fn">fnLoadTransactions()</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Txn ID</th>
+            <th>Cashier</th>
+            <th>Items</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="transactionsTableBody">
+          <tr>
+            <td class="cell-primary">#4471</td>
+            <td>Mark Tan</td>
+            <td>4 items</td>
+            <td class="txn-amount">₱1,240.00</td>
+            <td><span class="status-pill completed">Completed</span></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" onclick="fnViewTransaction('4471')">↗</button>
+              <button class="btn-void" onclick="fnVoidTransaction('4471')">Void</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="cell-primary">#4470</td>
+            <td>Carlo Dimaano</td>
+            <td>2 items</td>
+            <td class="txn-amount">₱560.00</td>
+            <td><span class="status-pill completed">Completed</span></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" onclick="fnViewTransaction('4470')">↗</button>
+              <button class="btn-void" onclick="fnVoidTransaction('4470')">Void</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="cell-primary">#4468</td>
+            <td>Mark Tan</td>
+            <td>7 items</td>
+            <td class="txn-amount">₱3,150.00</td>
+            <td><span class="status-pill flagged">Flagged</span></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" onclick="fnViewTransaction('4468')">↗</button>
+              <button class="btn-override" onclick="fnOverrideTransaction('4468')">Override</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="cell-primary">#4465</td>
+            <td>Carlo Dimaano</td>
+            <td>1 item</td>
+            <td class="txn-amount">₱85.00</td>
+            <td><span class="status-pill voided">Voided</span></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" onclick="fnViewTransaction('4465')">↗</button>
+            </div></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="lower-grid">
+      <!-- INVENTORY -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Inventory</div>
+          <span class="placeholder-fn">fnLoadInventory()</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Stock</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTableBody">
+            <tr>
+              <td class="cell-primary">Bottled Water 500ml</td>
+              <td>
+                <span class="stock-bar-track"><span class="stock-bar-fill healthy" style="width:78%"></span></span>
+                <span class="stock-label">156 units</span>
+              </td>
+              <td><div class="row-actions">
+                <button class="icon-btn" onclick="fnAdjustStock('water-500')">✎</button>
+              </div></td>
+            </tr>
+            <tr>
+              <td class="cell-primary">Instant Noodles</td>
+              <td>
+                <span class="stock-bar-track"><span class="stock-bar-fill low" style="width:24%"></span></span>
+                <span class="stock-label">18 units</span>
+              </td>
+              <td><div class="row-actions">
+                <button class="icon-btn" onclick="fnAdjustStock('noodles')">✎</button>
+              </div></td>
+            </tr>
+            <tr>
+              <td class="cell-primary">Canned Sardines</td>
+              <td>
+                <span class="stock-bar-track"><span class="stock-bar-fill critical" style="width:8%"></span></span>
+                <span class="stock-label">4 units</span>
+              </td>
+              <td><div class="row-actions">
+                <button class="icon-btn" onclick="fnAdjustStock('sardines')">✎</button>
+              </div></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Reports</div>
+          <span class="placeholder-fn">fnGenerateReport()</span>
+        </div>
+        <div id="reportsList">
+          <div class="report-item">
+            <div>
+              <div class="report-name">Daily Sales Summary</div>
+              <div class="report-meta">Generated automatically · 11:59 PM</div>
+            </div>
+            <button class="icon-btn" onclick="fnViewReport('daily-sales')">↗</button>
+          </div>
+          <div class="report-item">
+            <div>
+              <div class="report-name">Voided / Overridden Log</div>
+              <div class="report-meta">2 entries today</div>
+            </div>
+            <button class="icon-btn" onclick="fnViewReport('voided-log')">↗</button>
+          </div>
+          <div class="report-item">
+            <div>
+              <div class="report-name">Low Stock Report</div>
+              <div class="report-meta">5 items below threshold</div>
+            </div>
+            <button class="icon-btn" onclick="fnViewReport('low-stock')">↗</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+<script>
+  // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
+  function fnLoadTransactions() { /* fetch + render transactionsTableBody */ }
+  function fnViewTransaction(id) { /* open transaction detail view */ }
+  function fnVoidTransaction(id) { /* void transaction id, requires confirm */ }
+  function fnOverrideTransaction(id) { /* open override modal for flagged transaction id */ }
+  function fnLoadInventory() { /* fetch + render inventoryTableBody */ }
+  function fnAdjustStock(itemKey) { /* open stock adjustment modal for item */ }
+  function fnGenerateReport() { /* open report generation modal */ }
+  function fnViewReport(reportKey) { /* open/download report by key */ }
+  function fnOpenNotifications() { /* toggle notifications panel */ }
+  function fnOpenProfileMenu() { /* toggle profile dropdown */ }
+  function fnLogout() { window.roleDashboard?.logout?.(); }
+</script>
+
+<script src="role-dashboard.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    window.roleDashboard.initRoleDashboard({
+      defaultRole: 'manager',
+      userNameId: 'currentUserName',
+      roleId: 'currentRoleBadge',
+    });
+  });
+</script>
+</body>
+</html>

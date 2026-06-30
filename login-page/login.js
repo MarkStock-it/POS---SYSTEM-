@@ -130,8 +130,20 @@ function getUserByIdentifier(identifier) {
   });
 }
 
+function inferRoleFromIdentifier(identifier, fallback = "cashier") {
+  const value = String(identifier || "").trim().toLowerCase();
+  if (value.includes("super") || value.includes("system")) return "super-admin";
+  if (value.includes("admin")) return "admin";
+  if (value.includes("manager")) return "manager";
+  return fallback;
+}
+
 function setCurrentUser(user) {
-  localStorage.setItem("posCurrentUser", JSON.stringify(user));
+  const normalizedRole = String(user.role || inferRoleFromIdentifier(user.email || user.username || "", "cashier")).trim().toLowerCase();
+  localStorage.setItem("posCurrentUser", JSON.stringify({
+    ...user,
+    role: normalizedRole,
+  }));
 }
 
 function ensureDemoUserExists() {
@@ -142,6 +154,7 @@ function ensureDemoUserExists() {
       email: "demo@pos.com",
       username: "demouser",
       password: "password",
+      role: "cashier",
       createdAt: new Date().toISOString(),
     });
     localStorage.setItem("posUsers", JSON.stringify(users));
@@ -190,6 +203,8 @@ loginForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const normalizedRole = String(user.role || inferRoleFromIdentifier(identifier, "cashier")).trim().toLowerCase();
+
   // Show loading state
   loginButton.classList.add("loading");
   loginButton.disabled = true;
@@ -202,15 +217,24 @@ loginForm.addEventListener("submit", async (e) => {
       fullName: user.fullName,
       email: user.email,
       username: user.username,
+      role: normalizedRole,
       loggedAt: new Date().toISOString(),
     });
 
     successModal.classList.add("show");
     showToast("Login successful! Redirecting to dashboard...", "success");
 
-    const homeUrl = new URL("../home-page/index.html", window.location.href).href;
     setTimeout(() => {
-      window.location.href = homeUrl;
+      const targetPath = window.roleDashboard?.getDashboardPath?.(normalizedRole) || (
+        normalizedRole === "super-admin"
+          ? "../New_Index/super-admin.html"
+          : normalizedRole === "admin"
+            ? "../New_Index/admin.html"
+            : normalizedRole === "manager"
+              ? "../New_Index/manager.html"
+              : "../home-page/index.html"
+      );
+      window.location.href = new URL(targetPath, window.location.href).href;
     }, 800);
   } catch (error) {
     loginButton.classList.remove("loading");
@@ -231,12 +255,6 @@ signupButton.addEventListener("click", () => {
 forgotPasswordLink.addEventListener("click", (e) => {
   e.preventDefault();
   showToast("Password reset feature coming soon!", "error");
-});
-
-// SIGNIN BUTTON
-// ============================================
-loginButton.addEventListener("click", () => {
-  window.location.href = "../home-page/index.html"
 });
 
 // ============================================
