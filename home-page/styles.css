@@ -43,7 +43,6 @@ html, body {
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  zoom: 0.95;
 }
 
 /* accessible base */
@@ -53,11 +52,9 @@ img { display:block; max-width:100%; height:auto; }
 
 /* shell */
 .app-shell {
-  padding: calc(var(--space-lg) - 4px);
+  padding: var(--space-lg);
   max-width: var(--max-content-width);
   margin: 0 auto;
-  transform: scale(0.96);
-  transform-origin: top center;
 }
 
 /* header */
