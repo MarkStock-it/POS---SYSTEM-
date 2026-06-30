@@ -148,17 +148,33 @@ function setCurrentUser(user) {
 
 function ensureDemoUserExists() {
   const users = getStoredUsers();
-  if (!users.some((user) => user.email.toLowerCase() === "demo@pos.com")) {
-    users.push({
+  const demoUsers = [
+    {
       fullName: "Demo User",
       email: "demo@pos.com",
       username: "demouser",
       password: "password",
       role: "cashier",
       createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem("posUsers", JSON.stringify(users));
-  }
+    },
+    {
+      fullName: "Super Admin Demo",
+      email: "superadmin@pos.com",
+      username: "superadmin",
+      password: "superadmin123",
+      role: "super-admin",
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  demoUsers.forEach((user) => {
+    const exists = users.some((storedUser) => storedUser.email.toLowerCase() === user.email.toLowerCase());
+    if (!exists) {
+      users.push(user);
+    }
+  });
+
+  localStorage.setItem("posUsers", JSON.stringify(users));
 }
 
 ensureDemoUserExists();
