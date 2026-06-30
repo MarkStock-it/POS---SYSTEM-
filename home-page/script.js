@@ -449,10 +449,24 @@ function fetchProducts() {
   if (searchValue) query.set('search', searchValue);
   if (state.activeStockFilter && state.activeStockFilter !== 'all') query.set('stock', state.activeStockFilter);
 
-  return fetch(`/api/products?${query.toString()}`)
-    .then((response) => response.json())
+  return fetch(`/products?${query.toString()}`, {
+    headers: { Accept: 'application/json' },
+  })
+    .then(async (response) => {
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(`Products request failed with ${response.status}`);
+      }
+      if (!text) return [];
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        throw new Error('Products endpoint returned invalid JSON');
+      }
+    })
     .then((products) => {
-      state.products = products;
+      state.products = Array.isArray(products) ? products : [];
       renderCategoryPills();
       renderProductGrid();
       renderInventoryTable();

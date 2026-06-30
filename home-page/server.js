@@ -413,7 +413,7 @@ app.post('/api/auth/register', async (req, res) => {
   );
 });
 
-app.get('/api/products', async (req, res) => {
+function handleProductsRequest(req, res) {
   const search = String(req.query.search || '').trim();
   const category = String(req.query.category || 'all').trim().toLowerCase();
   const barcode = String(req.query.barcode || '').trim();
@@ -452,32 +452,35 @@ app.get('/api/products', async (req, res) => {
   sql += ' ORDER BY name COLLATE NOCASE';
 
   if (mongoDb) {
-    try {
-      const filter = {};
-      if (barcode) filter.barcode = barcode;
-      if (search) {
-        filter.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { sku: { $regex: search, $options: 'i' } },
-          { barcode: { $regex: search, $options: 'i' } },
-          { category: { $regex: search, $options: 'i' } }
-        ];
-      }
-      if (category && category !== 'all') {
-        filter.category = new RegExp(`^${category}$`, 'i');
-      }
-      if (stockFilter === 'low') {
-        filter.stock = { $gt: 0, $lte: 10 };
-      } else if (stockFilter === 'out') {
-        filter.stock = { $eq: 0 };
-      }
+    (async () => {
+      try {
+        const filter = {};
+        if (barcode) filter.barcode = barcode;
+        if (search) {
+          filter.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { sku: { $regex: search, $options: 'i' } },
+            { barcode: { $regex: search, $options: 'i' } },
+            { category: { $regex: search, $options: 'i' } }
+          ];
+        }
+        if (category && category !== 'all') {
+          filter.category = new RegExp(`^${category}$`, 'i');
+        }
+        if (stockFilter === 'low') {
+          filter.stock = { $gt: 0, $lte: 10 };
+        } else if (stockFilter === 'out') {
+          filter.stock = { $eq: 0 };
+        }
 
-      const rows = await mongoDb.collection('products').find(filter).sort({ name: 1 }).toArray();
-      return res.json(rows.map((row) => ({ ...row, id: row._id.toString() })));
-    } catch (error) {
-      console.error('MongoDB product query failed:', error.message);
-      return res.status(500).json({ error: 'Unable to load products' });
-    }
+        const rows = await mongoDb.collection('products').find(filter).sort({ name: 1 }).toArray();
+        return res.json(rows.map((row) => ({ ...row, id: row._id.toString() })));
+      } catch (error) {
+        console.error('MongoDB product query failed:', error.message);
+        return res.status(500).json({ error: 'Unable to load products' });
+      }
+    })();
+    return;
   }
 
   db.all(sql, params, (err, rows) => {
@@ -487,7 +490,10 @@ app.get('/api/products', async (req, res) => {
     }
     res.json(rows);
   });
-});
+}
+
+app.get('/api/products', handleProductsRequest);
+app.get('/products', handleProductsRequest);
 
 app.post('/api/products', checkAuth, (req, res) => {
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
