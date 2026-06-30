@@ -233,6 +233,12 @@ forgotPasswordLink.addEventListener("click", (e) => {
   showToast("Password reset feature coming soon!", "error");
 });
 
+// SIGNIN BUTTON
+// ============================================
+loginButton.addEventListener("click", () => {
+  window.location.href = "../home-page/index.html"
+});
+
 // ============================================
 // KEYBOARD SHORTCUTS
 // ============================================

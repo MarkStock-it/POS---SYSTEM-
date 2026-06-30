@@ -35,7 +35,7 @@
 }
 
 /* Light Mode (explicit) */
-html[data-theme="light"] {
+html[data-theme="dark"] {
   --color-text: #1f2937;
   --color-text-light: #6b7280;
   --color-bg: #ffffff;
@@ -115,6 +115,14 @@ body::before {
 }
 
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-text: #f3f4f6;
+    --color-text-light: #d1d5db;
+    --color-bg: #111827;
+    --color-bg-secondary: #1f2937;
+    --color-border: #374151;
+    --color-border-light: #2d3748;
+  }
   body {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   }
@@ -163,7 +171,7 @@ body::before {
 
 .register-container {
   width: 100%;
-  max-width: 480px;
+  max-width: 420px;
   animation: slideUp var(--transition-slow) ease-out;
   position: relative;
   z-index: 1;
