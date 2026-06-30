@@ -434,6 +434,11 @@ function clearCart() {
   showToast('Cart cleared successfully');
 }
 
+function logoutFromHome() {
+  localStorage.removeItem('posCurrentUser');
+  window.location.href = '../login-page/login.html';
+}
+
 function getApiHeaders(extraHeaders = {}) {
   return {
     Accept: 'application/json',
