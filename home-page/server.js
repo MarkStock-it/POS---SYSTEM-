@@ -177,6 +177,7 @@ function initDatabase() {
 initDatabase();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
 // Simple PIN-based middleware for protected routes
@@ -492,10 +493,7 @@ function handleProductsRequest(req, res) {
   });
 }
 
-app.get('/api/products', handleProductsRequest);
-app.get('/products', handleProductsRequest);
-
-app.post('/api/products', checkAuth, (req, res) => {
+function createProduct(req, res) {
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
 
   if (!name || !sku || !barcode || !category) {
@@ -516,7 +514,22 @@ app.post('/api/products', checkAuth, (req, res) => {
       res.json({ id, ...req.body });
     }
   );
-});
+}
+
+function handleProductsCollectionRoute(req, res) {
+  if (req.method === 'GET') {
+    return handleProductsRequest(req, res);
+  }
+
+  if (req.method === 'POST') {
+    return checkAuth(req, res, () => createProduct(req, res));
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+app.all('/api/products', handleProductsCollectionRoute);
+app.all('/products', handleProductsCollectionRoute);
 
 app.put('/api/products/:id', checkAuth, (req, res) => {
   const id = req.params.id;
