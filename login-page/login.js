@@ -160,12 +160,13 @@ loginForm.addEventListener("submit", async (e) => {
 
     // Show success modal
     successModal.classList.add("show");
-    showToast("Login successful!", "success");
+    showToast("Login successful! Redirecting to dashboard...", "success");
 
-    // Redirect after 3 seconds
+    // Redirect immediately to the homepage relative to the current repo path
+    const homeUrl = new URL("../home-page/index.html", window.location.href).href;
     setTimeout(() => {
-      window.location.href = "../home-page/index.html";
-    }, 3000);
+      window.location.href = homeUrl;
+    }, 800);
   } catch (error) {
     loginButton.classList.remove("loading");
     loginButton.disabled = false;

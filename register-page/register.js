@@ -243,12 +243,13 @@ registerForm.addEventListener("submit", async (e) => {
 
     // Show success modal
     successModal.classList.add("show");
-    showToast("Account created successfully!", "success");
+    showToast("Account created successfully! Redirecting to login...", "success");
 
-    // Redirect after 3 seconds
+    // Redirect to login page using GitHub Pages-compatible relative URL
+    const loginUrl = new URL("../login-page/login.html", window.location.href).href;
     setTimeout(() => {
-      window.location.href = "../login-page/login.html";
-    }, 3000);
+      window.location.href = loginUrl;
+    }, 800);
   } catch (error) {
     registerButton.classList.remove("loading");
     registerButton.disabled = false;
