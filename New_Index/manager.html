@@ -718,11 +718,11 @@
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
-  function fnLoadTransactions() { /* fetch + render transactionsTableBody */ }
-  function fnViewTransaction(id) { /* open transaction detail view */ }
-  function fnVoidTransaction(id) { /* void transaction id, requires confirm */ }
-  function fnOverrideTransaction(id) { /* open override modal for flagged transaction id */ }
-  function fnLoadInventory() { /* fetch + render inventoryTableBody */ }
+  function fnLoadTransactions() { window.roleDashboard?.loadTransactions?.('transactionsTableBody'); }
+  function fnViewTransaction(id) { console.log('View transaction', id); }
+  function fnVoidTransaction(id) { console.log('Void transaction', id); }
+  function fnOverrideTransaction(id) { console.log('Override transaction', id); }
+  function fnLoadInventory() { window.roleDashboard?.loadInventory?.('inventoryTableBody'); }
   function fnAdjustStock(itemKey) { /* open stock adjustment modal for item */ }
   function fnGenerateReport() { /* open report generation modal */ }
   function fnViewReport(reportKey) { /* open/download report by key */ }
@@ -739,6 +739,8 @@
       userNameId: 'currentUserName',
       roleId: 'currentRoleBadge',
     });
+    window.fnLoadTransactions?.();
+    window.fnLoadInventory?.();
   });
 </script>
 </body>

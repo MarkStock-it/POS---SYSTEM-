@@ -695,12 +695,12 @@
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
-  function fnCreateAccount() { /* open modal to create manager/cashier */ }
-  function fnEditAccount(id) { /* open edit modal for account id */ }
-  function fnSuspendAccount(id) { /* suspend/reactivate account id */ }
-  function fnFilterStaff(role) { /* filter staffTableBody by role */ }
-  function fnLoadTransactions() { /* fetch + render transactionsTableBody */ }
-  function fnViewTransaction(id) { /* open transaction detail view */ }
+  function fnCreateAccount() { console.log('Create account'); }
+  function fnEditAccount(id) { console.log('Edit account', id); }
+  function fnSuspendAccount(id) { console.log('Suspend account', id); }
+  function fnFilterStaff(role) { console.log('Filter staff', role); }
+  function fnLoadTransactions() { window.roleDashboard?.loadTransactions?.('transactionsTableBody'); }
+  function fnViewTransaction(id) { console.log('View transaction', id); }
   function fnGenerateReport() { /* open report generation modal */ }
   function fnViewReport(reportKey) { /* open/download report by key */ }
   function fnOpenNotifications() { /* toggle notifications panel */ }
@@ -716,6 +716,7 @@
       userNameId: 'currentUserName',
       roleId: 'currentRoleBadge',
     });
+    window.fnLoadTransactions?.();
   });
 </script>
 </body>

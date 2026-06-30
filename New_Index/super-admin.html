@@ -662,10 +662,10 @@
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
-  function fnCreateAccount() { /* open modal to create admin/manager/cashier */ }
-  function fnEditAccount(id) { /* open edit modal for account id */ }
-  function fnSuspendAccount(id) { /* suspend/reactivate account id */ }
-  function fnFilterAccounts(role) { /* filter accountsTableBody by role */ }
+  function fnCreateAccount() { console.log('Create account'); }
+  function fnEditAccount(id) { console.log('Edit account', id); }
+  function fnSuspendAccount(id) { console.log('Suspend account', id); }
+  function fnFilterAccounts(role) { console.log('Filter accounts', role); }
   function fnOpenNotifications() { /* toggle notifications panel */ }
   function fnOpenProfileMenu() { /* toggle profile dropdown */ }
   function fnLogout() { window.roleDashboard?.logout?.(); }
