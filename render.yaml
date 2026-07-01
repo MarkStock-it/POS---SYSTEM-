@@ -2,6 +2,7 @@ services:
   - type: web
     name: pos-system
     env: node
+    plan: free
     branch: main
     buildCommand: npm install
     startCommand: npm start
