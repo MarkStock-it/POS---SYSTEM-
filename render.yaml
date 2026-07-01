@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: pos-system
+    env: node
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
