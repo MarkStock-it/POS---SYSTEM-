@@ -3,6 +3,10 @@
 :root {
   --bg: #f8fafc; /* soft off-white background */
   --text: #0f172a; /* deep charcoal text */
+  --color-text: #0f172a;
+  --color-bg-secondary: rgba(255,255,255,0.92);
+  --color-border: rgba(15,23,42,0.06);
+  --color-border-light: rgba(15,23,42,0.04);
   --muted: #6b7280;
   --primary: #2563eb; /* premium blue */
   --success: #10b981;
@@ -30,12 +34,92 @@
   --max-content-width: 1720px;
 }
 
+html[data-theme="dark"] {
+  /* mirror core variables used across the stylesheet so components inherit dark values */
+  --text: #f3f4f6;
+  --muted: #cbd5e1;
+  --bg: #0b1220;
+  --card: rgba(17,24,39,0.65);
+  --card-strong: #0f1722;
+  --glass-border: rgba(255,255,255,0.06);
+  --glass-accent: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+
+  /* keep older color-* tokens for components that reference them */
+  --color-text: #f3f4f6;
+  --color-text-light: #d1d5db;
+  --color-bg: #111827;
+  --color-bg-secondary: #1f2937;
+  --color-border: #374151;
+  --color-border-light: #2d3748;
+}
+
+html[data-theme="dark"] {
+  background-color: #0b1220;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background-color: #0b1220;
+  background-image: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  background-position: center center;
+  min-height: 100vh;
+}
+/* dark-mode component overrides */
+html[data-theme="dark"] .pos-panel,
+html[data-theme="dark"] .cart-panel,
+html[data-theme="dark"] .inventory-main,
+html[data-theme="dark"] .inventory-sidebar,
+html[data-theme="dark"] .category-panel,
+html[data-theme="dark"] .product-card,
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .cart-status,
+html[data-theme="dark"] .summary-card,
+html[data-theme="dark"] .modal-card,
+html[data-theme="dark"] .scanner-panel,
+html[data-theme="dark"] .scanner-status-row,
+html[data-theme="dark"] .qr-code-box {
+  background: linear-gradient(180deg, rgba(17,24,39,0.72), rgba(17,24,39,0.6));
+  border: 1px solid var(--color-border-light);
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  color: var(--text);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+/* secondary / glass buttons in dark mode */
+html[data-theme="dark"] .header-button,
+html[data-theme="dark"] .table-button,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .category-chip {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--text);
+}
+
+/* product cards specifics */
+html[data-theme="dark"] .product-card {
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ensure headings and text use the theme text color */
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] p,
+html[data-theme="dark"] span,
+html[data-theme="dark"] strong,
+html[data-theme="dark"] .eyebrow {
+  color: var(--text);
+}
 /* global reset & base */
 * { box-sizing: border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
 html,body { height:100%; }
 html, body {
   margin: 0;
-  min-height: 100%;
+  min-height: 100vh;
   font-family: var(--font-family);
   background: var(--bg);
   color: var(--text);
@@ -49,6 +133,47 @@ html, body {
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-appearance: none; border: none; background: none; }
 img { display:block; max-width:100%; height:auto; }
+
+.theme-toggle {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  z-index: 100;
+}
+
+.theme-toggle:hover {
+  background: var(--color-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.theme-icon {
+  color: inherit;
+  transition: transform var(--transition-base);
+}
+
+.theme-toggle:hover .theme-icon {
+  transform: rotate(20deg);
+}
 
 /* shell */
 .app-shell {
@@ -115,15 +240,14 @@ img { display:block; max-width:100%; height:auto; }
 .secondary-button,
 .header-button,
 .table-button {
-  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.45));
-  border: 1px solid var(--glass-border);
-  color: var(--text);
-  padding: 10px 14px;
-  backdrop-filter: blur(6px) saturate(120%);
+  background: linear-gradient(180deg, var(--primary), #1f4ed8);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(37,99,235,0.14);
 }
 .secondary-button:hover, .header-button:hover, .table-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(15,23,42,0.06);
 }
 
 /* payment buttons */
@@ -134,7 +258,8 @@ img { display:block; max-width:100%; height:auto; }
   font-weight:700;
   transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
-.payment-cash { background:linear-gradient(180deg,#fff,#fbfdff); border:1px solid var(--glass-border); }
+.payment-cash { background:linear-gradient(180deg,#ffffff,#fbfdff); border:1px solid var(--glass-border); }
+.payment-cash { color: #000; }
 .payment-card { background: linear-gradient(180deg,var(--primary), #1f4ed8); color:#fff; box-shadow: 0 10px 20px rgba(37,99,235,0.08); }
 
 /* pills */
