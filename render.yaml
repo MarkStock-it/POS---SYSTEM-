@@ -4,6 +4,6 @@ services:
     env: node
     plan: free
     branch: main
-    buildCommand: npm ci --build-from-source=sqlite3
+    buildCommand: npm ci
     startCommand: npm start
     autoDeploy: true
