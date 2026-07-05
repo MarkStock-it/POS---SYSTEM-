@@ -7,6 +7,8 @@ const state = {
   inventorySearch: '',
   editingProductId: null,
   discountPercent: 0,
+  customCategories: [],
+  pendingImageDataUrl: '',
 };
 
 const fallbackImage = '/images/placeholder.svg';
@@ -223,8 +225,26 @@ function setButtonActive(buttonGroup, activeValue) {
   });
 }
 
+function getFilteredProducts() {
+  const searchValue = (state.inventorySearch || state.productSearch).toLowerCase();
+  return state.products.filter((product) => {
+    const categoryMatch = state.selectedCategory === 'all' || product.category.toLowerCase() === state.selectedCategory;
+    const stockMatch = state.activeStockFilter === 'all'
+      || (state.activeStockFilter === 'low' && product.stock > 0 && product.stock <= 10)
+      || (state.activeStockFilter === 'out' && product.stock === 0);
+    const searchMatch = !searchValue || [product.name, product.sku, product.barcode, product.category]
+      .some((field) => String(field).toLowerCase().includes(searchValue));
+    return categoryMatch && stockMatch && searchMatch;
+  });
+}
+
 function renderCategoryPills() {
-  const categories = Array.from(new Set(state.products.map((product) => product.category.toLowerCase()))).sort();
+  const categories = Array.from(
+    new Set([
+      ...state.products.map((product) => product.category.toLowerCase()),
+      ...state.customCategories.map((category) => category.toLowerCase()),
+    ]),
+  ).sort();
   const pillsContainer = document.getElementById('categoryPills');
   pillsContainer.innerHTML = '';
 
@@ -240,8 +260,10 @@ function renderCategoryPills() {
 
   pillsContainer.appendChild(createPill('all', 'All Items'));
   categories.forEach((category) => {
-    const label = category.replace(/\b\w/g, (chr) => chr.toUpperCase());
-    pillsContainer.appendChild(createPill(category, label));
+    const normalized = category.trim();
+    if (!normalized) return;
+    const label = normalized.replace(/\b\w/g, (chr) => chr.toUpperCase());
+    pillsContainer.appendChild(createPill(normalized.toLowerCase(), label));
   });
 
   setButtonActive(Array.from(pillsContainer.querySelectorAll('.pill')), state.selectedCategory);
@@ -249,12 +271,7 @@ function renderCategoryPills() {
 
 function renderProductGrid() {
   const grid = document.getElementById('productGrid');
-  const products = state.products.filter((product) => {
-    const categoryMatch = state.selectedCategory === 'all' || product.category.toLowerCase() === state.selectedCategory;
-    const searchValue = state.productSearch.toLowerCase();
-    const searchMatch = !searchValue || [product.name, product.sku, product.barcode, product.category].some((field) => String(field).toLowerCase().includes(searchValue));
-    return categoryMatch && searchMatch;
-  });
+  const products = getFilteredProducts();
 
   grid.innerHTML = '';
   if (!products.length) {
@@ -493,7 +510,6 @@ function holdTransaction() {
 
 function fetchProducts() {
   const query = new URLSearchParams();
-  if (state.selectedCategory && state.selectedCategory !== 'all') query.set('category', state.selectedCategory);
   const searchValue = state.inventorySearch || state.productSearch;
   if (searchValue) query.set('search', searchValue);
   if (state.activeStockFilter && state.activeStockFilter !== 'all') query.set('stock', state.activeStockFilter);
@@ -524,7 +540,9 @@ function searchProducts() {
 
 function filterCategory(category) {
   state.selectedCategory = category;
-  fetchProducts();
+  renderCategoryPills();
+  renderProductGrid();
+  renderInventoryTable();
 }
 
 function filterStock(type) {
@@ -533,16 +551,13 @@ function filterStock(type) {
     const value = button.dataset.value || button.textContent.trim().toLowerCase().split(' ')[0];
     button.classList.toggle('active', value === type);
   });
-  fetchProducts();
+  renderProductGrid();
+  renderInventoryTable();
 }
 
 function renderInventoryTable() {
   const inventoryTable = document.getElementById('inventoryTableBody');
-  const filteredProducts = state.products.filter((product) => {
-    if (state.activeStockFilter === 'low') return product.stock > 0 && product.stock <= 10;
-    if (state.activeStockFilter === 'out') return product.stock === 0;
-    return true;
-  });
+  const filteredProducts = getFilteredProducts();
 
   if (!filteredProducts.length) {
     inventoryTable.innerHTML = '<tr><td class="table-note" colspan="7">No inventory items match these filters.</td></tr>';
@@ -577,10 +592,76 @@ function renderInventoryCards() {
 
 function renderCategoryList() {
   const categoryList = document.getElementById('categoryList');
-  const categories = Array.from(new Set(state.products.map((product) => product.category.trim()).filter(Boolean))).sort();
-  categoryList.innerHTML = categories
-    .map((category) => `<button class="category-chip" type="button">${category}</button>`)
-    .join('');
+  const categories = Array.from(
+    new Set([
+      ...state.products.map((product) => product.category.trim()).filter(Boolean),
+      ...state.customCategories.map((category) => category.trim()).filter(Boolean),
+    ]),
+  ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  categoryList.innerHTML = '';
+
+  const createCategoryButton = (value, label) => {
+    const button = document.createElement('button');
+    button.className = 'category-chip';
+    button.type = 'button';
+    button.dataset.value = value;
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      filterCategory(value);
+      renderCategoryPills();
+      renderCategoryList();
+    });
+    return button;
+  };
+
+  categoryList.appendChild(createCategoryButton('all', 'All'));
+  categories.forEach((category) => {
+    const normalized = category.trim();
+    if (!normalized) return;
+    categoryList.appendChild(createCategoryButton(normalized.toLowerCase(), normalized));
+  });
+
+  setButtonActive(Array.from(categoryList.querySelectorAll('.category-chip')), state.selectedCategory);
+}
+
+function addCategory() {
+  const modal = document.getElementById('categoryModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  const input = document.getElementById('newCategoryInput');
+  input.value = '';
+  input.focus();
+}
+
+function saveCategory() {
+  const input = document.getElementById('newCategoryInput');
+  const normalized = input.value.trim();
+  if (!normalized) {
+    showToast('Please enter a category name.', 'danger');
+    return;
+  }
+
+  const normalizedLower = normalized.toLowerCase();
+  const alreadyExists = state.customCategories.some((cat) => cat.toLowerCase() === normalizedLower)
+    || state.products.some((product) => product.category.trim().toLowerCase() === normalizedLower);
+
+  if (alreadyExists) {
+    showToast('This category already exists.', 'warning');
+    return;
+  }
+
+  state.customCategories.push(normalized);
+  renderCategoryList();
+  renderCategoryPills();
+  closeAddCategoryModal();
+  showToast(`Category "${normalized}" added.`);
+}
+
+function closeAddCategoryModal() {
+  const modal = document.getElementById('categoryModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
 }
 
 function openAddProductModal(product = null) {
@@ -589,7 +670,7 @@ function openAddProductModal(product = null) {
   state.editingProductId = product ? product.id : null;
 
   title.textContent = product ? 'Edit inventory item' : 'New inventory item';
-  document.getElementById('productImageUrl').value = product?.image || '';
+  document.getElementById('productImageUrl').value = product?.image && !String(product.image).startsWith('data:') ? product.image : '';
   document.getElementById('productName').value = product?.name || '';
   document.getElementById('productDescription').value = product?.description || '';
   document.getElementById('productCategory').value = product?.category || '';
@@ -598,6 +679,7 @@ function openAddProductModal(product = null) {
   document.getElementById('productPrice').value = product?.price || '';
   document.getElementById('productStock').value = product?.stock ?? '';
   document.getElementById('productThreshold').value = product?.threshold ?? '';
+  state.pendingImageDataUrl = product?.image && String(product.image).startsWith('data:') ? product.image : '';
   const preview = document.getElementById('imagePreview');
   if (product?.image) {
     preview.style.backgroundImage = `url('${product.image}')`;
@@ -618,6 +700,7 @@ function closeProductModal() {
   preview.style.backgroundImage = 'none';
   preview.textContent = 'Image preview';
   state.editingProductId = null;
+  state.pendingImageDataUrl = '';
 }
 
 function previewProductImage(event) {
@@ -627,15 +710,13 @@ function previewProductImage(event) {
   if (!file) {
     preview.textContent = 'Image preview';
     preview.style.backgroundImage = 'none';
+    state.pendingImageDataUrl = '';
     return;
   }
 
   const reader = new FileReader();
   reader.onload = function () {
-    // Use the base64 data URI only for the live preview in the browser.
-    // Do NOT persist base64 data URIs into the product record or SQLite database.
-    // A proper image upload endpoint should be implemented to store files
-    // on disk (e.g. /images) or in cloud storage and save a URL instead.
+    state.pendingImageDataUrl = reader.result;
     preview.style.backgroundImage = `url('${reader.result}')`;
     preview.style.backgroundSize = 'cover';
     preview.style.backgroundPosition = 'center';
@@ -697,9 +778,11 @@ function saveProduct() {
     // implemented to save uploaded files to the /images folder or cloud
     // storage and then save the resulting URL here instead.
     image: (function () {
+      if (state.pendingImageDataUrl) {
+        return state.pendingImageDataUrl;
+      }
       const url = document.getElementById('productImageUrl').value.trim();
       if (!url) return fallbackImage;
-      if (url.startsWith('data:')) return fallbackImage; // ignore base64 data URIs
       return url;
     })(),
   };

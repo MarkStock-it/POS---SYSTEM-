@@ -143,18 +143,6 @@
 
     <main class="page page-inventory" id="inventoryPage" hidden>
       <div class="inventory-layout">
-        <aside class="inventory-sidebar" aria-label="Inventory navigation">
-          <div class="sidebar-brand">Inventory</div>
-          <button class="sidebar-link active" type="button">Inventory</button>
-          <button class="sidebar-link" type="button">Customers</button>
-          <button class="sidebar-link" type="button">Employees</button>
-          <button class="sidebar-link" type="button">Sales History</button>
-          <button class="sidebar-link" type="button">Reports</button>
-          <button class="sidebar-link" type="button">Settings</button>
-          <button class="sidebar-link" type="button">Suppliers</button>
-          <button class="sidebar-link" type="button">Purchase Orders</button>
-        </aside>
-
         <section class="inventory-main">
           <div class="panel-header">
             <div>
@@ -298,6 +286,30 @@
           <div class="modal-actions">
             <button class="secondary-button" type="button" onclick="closeProductModal()">Cancel</button>
             <button class="primary-button" type="button" onclick="saveProduct()">Save Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="categoryModal">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Category Management</p>
+            <h3 id="categoryModalTitle">Add New Category</h3>
+          </div>
+          <button class="icon-button" type="button" aria-label="Close category form" onclick="closeAddCategoryModal()">×</button>
+        </div>
+
+        <form class="product-form" id="addCategoryForm" novalidate onsubmit="event.preventDefault(); saveCategory();">
+          <label class="field-group">
+            <span>Category Name</span>
+            <input id="newCategoryInput" type="text" placeholder="Enter category name" required />
+          </label>
+
+          <div class="modal-actions">
+            <button class="secondary-button" type="button" onclick="closeAddCategoryModal()">Cancel</button>
+            <button class="primary-button" type="submit">Save Category</button>
           </div>
         </form>
       </div>
