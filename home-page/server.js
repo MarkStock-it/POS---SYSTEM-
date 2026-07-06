@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -376,7 +376,37 @@ app.get('/api/auth/users', async (req, res) => {
   });
 });
 
-app.get('/api/auth/users/:id', checkAuth, (req, res) => {
+app.get('/api/auth/users/:id', checkAuth, async (req, res) => {
+  if (mongoDb) {
+    try {
+      if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid user id.' });
+      }
+
+      const user = await mongoDb.collection('users').findOne(
+        { _id: new ObjectId(req.params.id) },
+        { projection: { password: 0 } }
+      );
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      return res.json({
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        status: user.status || 'active',
+        createdAt: user.createdAt,
+      });
+    } catch (error) {
+      console.error('Failed to load user from MongoDB:', error.message);
+      return res.status(500).json({ error: 'Unable to load user' });
+    }
+  }
+
   db.get('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users WHERE id = ?', [req.params.id], (err, row) => {
     if (err) {
       console.error('Failed to load user:', err.message);
@@ -389,7 +419,53 @@ app.get('/api/auth/users/:id', checkAuth, (req, res) => {
   });
 });
 
-app.put('/api/auth/users/:id', checkAuth, (req, res) => {
+app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
+  if (mongoDb) {
+    try {
+      if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid user id.' });
+      }
+
+      const updates = {};
+      if (req.body.fullName !== undefined) {
+        updates.fullName = String(req.body.fullName || '').trim();
+      }
+      if (req.body.email !== undefined) {
+        updates.email = String(req.body.email || '').trim().toLowerCase();
+      }
+      if (req.body.username !== undefined) {
+        updates.username = String(req.body.username || '').trim();
+      }
+      if (req.body.password !== undefined && String(req.body.password || '').trim()) {
+        updates.password = String(req.body.password || '');
+      }
+      if (req.body.role !== undefined) {
+        updates.role = String(req.body.role || 'cashier').trim().toLowerCase();
+      }
+      if (req.body.status !== undefined) {
+        updates.status = String(req.body.status || 'active').trim().toLowerCase();
+      }
+
+      if (!Object.keys(updates).length) {
+        return res.status(400).json({ error: 'No fields provided.' });
+      }
+
+      const result = await mongoDb.collection('users').updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: updates }
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      return res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      console.error('Failed to update user in MongoDB:', error.message);
+      return res.status(500).json({ error: 'Unable to update user.' });
+    }
+  }
+
   const id = req.params.id;
   const updates = [];
   const values = [];
