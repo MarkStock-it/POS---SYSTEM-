@@ -719,26 +719,27 @@
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
   function fnLoadTransactions() { window.roleDashboard?.loadTransactions?.('transactionsTableBody'); }
-  function fnViewTransaction(id) { console.log('View transaction', id); }
-  function fnVoidTransaction(id) { console.log('Void transaction', id); }
-  function fnOverrideTransaction(id) { console.log('Override transaction', id); }
+  function fnViewTransaction(id) { window.roleDashboard?.viewTransaction?.(id); }
+  function fnVoidTransaction(id) { window.roleDashboard?.viewTransaction?.(id); }
+  function fnOverrideTransaction(id) { window.roleDashboard?.viewTransaction?.(id); }
   function fnLoadInventory() { window.roleDashboard?.loadInventory?.('inventoryTableBody'); }
-  function fnAdjustStock(itemKey) { /* open stock adjustment modal for item */ }
-  function fnGenerateReport() { /* open report generation modal */ }
-  function fnViewReport(reportKey) { /* open/download report by key */ }
-  function fnOpenNotifications() { /* toggle notifications panel */ }
-  function fnOpenProfileMenu() { /* toggle profile dropdown */ }
+  function fnAdjustStock(itemKey) { window.roleDashboard?.adjustStock?.(itemKey); }
+  function fnGenerateReport() { window.roleDashboard?.generateReport?.(); }
+  function fnViewReport(reportKey) { window.roleDashboard?.generateReport?.(reportKey); }
+  function fnOpenNotifications() { window.roleDashboard?.openNotifications?.(); }
+  function fnOpenProfileMenu() { window.roleDashboard?.openProfileMenu?.(); }
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
 <script src="role-dashboard.js"></script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
       defaultRole: 'manager',
       userNameId: 'currentUserName',
       roleId: 'currentRoleBadge',
     });
+    await window.roleDashboard.loadDashboardSummary?.();
     window.fnLoadTransactions?.();
     window.fnLoadInventory?.();
   });

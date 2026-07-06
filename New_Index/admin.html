@@ -695,28 +695,30 @@
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
-  function fnCreateAccount() { console.log('Create account'); }
-  function fnEditAccount(id) { console.log('Edit account', id); }
-  function fnSuspendAccount(id) { console.log('Suspend account', id); }
-  function fnFilterStaff(role) { console.log('Filter staff', role); }
+  function fnCreateAccount() { window.roleDashboard?.createAccount?.(); }
+  function fnEditAccount(id) { window.roleDashboard?.editUser?.(id); }
+  function fnSuspendAccount(id) { window.roleDashboard?.toggleUserStatus?.(id); }
+  function fnFilterStaff(role) { window.roleDashboard?.filterRowsByRole?.('staffTableBody', role); }
   function fnLoadTransactions() { window.roleDashboard?.loadTransactions?.('transactionsTableBody'); }
-  function fnViewTransaction(id) { console.log('View transaction', id); }
-  function fnGenerateReport() { /* open report generation modal */ }
-  function fnViewReport(reportKey) { /* open/download report by key */ }
-  function fnOpenNotifications() { /* toggle notifications panel */ }
-  function fnOpenProfileMenu() { /* toggle profile dropdown */ }
+  function fnViewTransaction(id) { window.roleDashboard?.viewTransaction?.(id); }
+  function fnGenerateReport() { window.roleDashboard?.generateReport?.(); }
+  function fnViewReport(reportKey) { window.roleDashboard?.generateReport?.(reportKey); }
+  function fnOpenNotifications() { window.roleDashboard?.openNotifications?.(); }
+  function fnOpenProfileMenu() { window.roleDashboard?.openProfileMenu?.(); }
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
 <script src="role-dashboard.js"></script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
       defaultRole: 'admin',
       userNameId: 'currentUserName',
       roleId: 'currentRoleBadge',
     });
+    await window.roleDashboard.loadDashboardSummary?.();
     window.fnLoadTransactions?.();
+    window.roleDashboard.loadUsers?.('staffTableBody');
   });
 </script>
 </body>

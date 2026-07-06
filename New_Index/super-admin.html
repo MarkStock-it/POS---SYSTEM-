@@ -662,23 +662,25 @@
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
-  function fnCreateAccount() { console.log('Create account'); }
-  function fnEditAccount(id) { console.log('Edit account', id); }
-  function fnSuspendAccount(id) { console.log('Suspend account', id); }
-  function fnFilterAccounts(role) { console.log('Filter accounts', role); }
-  function fnOpenNotifications() { /* toggle notifications panel */ }
-  function fnOpenProfileMenu() { /* toggle profile dropdown */ }
+  function fnCreateAccount() { window.roleDashboard?.createAccount?.(); }
+  function fnEditAccount(id) { window.roleDashboard?.editUser?.(id); }
+  function fnSuspendAccount(id) { window.roleDashboard?.toggleUserStatus?.(id); }
+  function fnFilterAccounts(role) { window.roleDashboard?.filterRowsByRole?.('accountsTableBody', role); }
+  function fnOpenNotifications() { window.roleDashboard?.openNotifications?.(); }
+  function fnOpenProfileMenu() { window.roleDashboard?.openProfileMenu?.(); }
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
 <script src="role-dashboard.js"></script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
       defaultRole: 'super-admin',
       userNameId: 'currentUserName',
       roleId: 'currentRoleBadge',
     });
+    await window.roleDashboard.loadDashboardSummary?.();
+    window.roleDashboard.loadUsers?.('accountsTableBody');
   });
 </script>
 </body>

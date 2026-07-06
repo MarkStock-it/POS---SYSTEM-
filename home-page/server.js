@@ -79,6 +79,7 @@ function initDatabase() {
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'cashier',
+        status TEXT DEFAULT 'active',
         created_at TEXT DEFAULT (datetime('now'))
       );
 
@@ -116,16 +117,24 @@ function initDatabase() {
             tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN threshold INTEGER DEFAULT 0', next));
           }
 
-          const runNext = () => {
-            if (!tasks.length) return callback(null);
-            const task = tasks.shift();
-            task((taskErr) => {
-              if (taskErr) return callback(taskErr);
-              runNext();
-            });
-          };
+          db.all('PRAGMA table_info(users)', (userErr, userColumns) => {
+            if (userErr) return callback(userErr);
+            const existingUserColumns = userColumns.map((column) => column.name);
+            if (!existingUserColumns.includes('status')) {
+              tasks.push((next) => db.run('ALTER TABLE users ADD COLUMN status TEXT DEFAULT "active"', next));
+            }
 
-          runNext();
+            const runNext = () => {
+              if (!tasks.length) return callback(null);
+              const task = tasks.shift();
+              task((taskErr) => {
+                if (taskErr) return callback(taskErr);
+                runNext();
+              });
+            };
+
+            runNext();
+          });
         });
       };
 
@@ -135,13 +144,28 @@ function initDatabase() {
         }
 
         db.run(`
-          INSERT OR IGNORE INTO users (full_name, email, username, password, role)
-          VALUES ('Super Admin Demo', 'superadmin@pos.com', 'superadmin', 'superadmin123', 'super-admin')
+          INSERT OR IGNORE INTO users (full_name, email, username, password, role, status)
+          VALUES ('Super Admin Demo', 'superadmin@pos.com', 'superadmin', 'superadmin123', 'super-admin', 'active')
         `);
 
         db.run(`
-          INSERT OR IGNORE INTO users (full_name, email, username, password, role)
-          VALUES ('Demo User', 'demo@pos.com', 'demouser', 'password', 'cashier')
+          INSERT OR IGNORE INTO users (full_name, email, username, password, role, status)
+          VALUES ('Demo User', 'demo@pos.com', 'demouser', 'password', 'cashier', 'active')
+        `);
+
+        db.run(`
+          INSERT OR IGNORE INTO transactions (id, created_at, payment_method, subtotal, discount, tax, total)
+          VALUES (1, '2026-07-06 06:30:00', 'card', 25.50, 0, 2.04, 27.54)
+        `);
+
+        db.run(`
+          INSERT OR IGNORE INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total)
+          VALUES (1, '0001', 'Bottled Water 500ml', '0001', 1.25, 2, 2.50)
+        `);
+
+        db.run(`
+          INSERT OR IGNORE INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total)
+          VALUES (1, '0005', 'Potato Chips', '0005', 2.99, 1, 2.99)
         `);
 
         const insertOrReplace = db.prepare(
@@ -282,6 +306,56 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+app.get('/api/dashboard/summary', checkAuth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  db.get('SELECT COALESCE(SUM(total), 0) AS todayRevenue FROM transactions WHERE date(created_at) = ?', [today], (revenueErr, revenueRow) => {
+    if (revenueErr) {
+      console.error('Failed to load revenue summary:', revenueErr.message);
+      return res.status(500).json({ error: 'Unable to load summary' });
+    }
+
+    db.get('SELECT COUNT(*) AS flaggedTransactions FROM transactions WHERE LOWER(payment_method) = "flagged"', (flagErr, flagRow) => {
+      if (flagErr) {
+        console.error('Failed to load flagged transactions:', flagErr.message);
+        return res.status(500).json({ error: 'Unable to load summary' });
+      }
+
+      db.get('SELECT COUNT(*) AS lowStockItems FROM products WHERE stock > 0 AND stock <= 10', (stockErr, stockRow) => {
+        if (stockErr) {
+          console.error('Failed to load stock summary:', stockErr.message);
+          return res.status(500).json({ error: 'Unable to load summary' });
+        }
+
+        db.get(`SELECT COUNT(*) AS totalUsers,
+          SUM(CASE WHEN LOWER(role) = 'admin' THEN 1 ELSE 0 END) AS adminCount,
+          SUM(CASE WHEN LOWER(role) = 'manager' THEN 1 ELSE 0 END) AS managerCount,
+          SUM(CASE WHEN LOWER(role) = 'cashier' THEN 1 ELSE 0 END) AS cashierCount,
+          SUM(CASE WHEN LOWER(status) = 'active' THEN 1 ELSE 0 END) AS activeUsers
+        FROM users`, (userErr, userRow) => {
+          if (userErr) {
+            console.error('Failed to load user summary:', userErr.message);
+            return res.status(500).json({ error: 'Unable to load summary' });
+          }
+
+          res.json({
+            todayRevenue: Number(revenueRow?.todayRevenue || 0),
+            flaggedTransactions: Number(flagRow?.flaggedTransactions || 0),
+            lowStockItems: Number(stockRow?.lowStockItems || 0),
+            totalUsers: Number(userRow?.totalUsers || 0),
+            activeSessions: Number(userRow?.activeUsers || 0),
+            roleCounts: {
+              admin: Number(userRow?.adminCount || 0),
+              manager: Number(userRow?.managerCount || 0),
+              cashier: Number(userRow?.cashierCount || 0),
+            },
+          });
+        });
+      });
+    });
+  });
+});
+
 app.get('/api/auth/users', async (req, res) => {
   if (mongoDb) {
     try {
@@ -293,12 +367,72 @@ app.get('/api/auth/users', async (req, res) => {
     }
   }
 
-  db.all('SELECT id, full_name AS fullName, email, username, role, created_at AS createdAt FROM users ORDER BY id ASC', [], (err, rows) => {
+  db.all('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users ORDER BY id ASC', [], (err, rows) => {
     if (err) {
       console.error('Failed to load users:', err.message);
       return res.status(500).json({ error: 'Unable to load users' });
     }
     res.json(rows);
+  });
+});
+
+app.get('/api/auth/users/:id', checkAuth, (req, res) => {
+  db.get('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) {
+      console.error('Failed to load user:', err.message);
+      return res.status(500).json({ error: 'Unable to load user' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json(row);
+  });
+});
+
+app.put('/api/auth/users/:id', checkAuth, (req, res) => {
+  const id = req.params.id;
+  const updates = [];
+  const values = [];
+
+  if (req.body.fullName !== undefined) {
+    updates.push('full_name = ?');
+    values.push(String(req.body.fullName || '').trim());
+  }
+  if (req.body.email !== undefined) {
+    updates.push('email = ?');
+    values.push(String(req.body.email || '').trim().toLowerCase());
+  }
+  if (req.body.username !== undefined) {
+    updates.push('username = ?');
+    values.push(String(req.body.username || '').trim());
+  }
+  if (req.body.password !== undefined && String(req.body.password || '').trim()) {
+    updates.push('password = ?');
+    values.push(String(req.body.password || ''));
+  }
+  if (req.body.role !== undefined) {
+    updates.push('role = ?');
+    values.push(String(req.body.role || 'cashier').trim().toLowerCase());
+  }
+  if (req.body.status !== undefined) {
+    updates.push('status = ?');
+    values.push(String(req.body.status || 'active').trim().toLowerCase());
+  }
+
+  if (!updates.length) {
+    return res.status(400).json({ error: 'No fields provided.' });
+  }
+
+  values.push(id);
+  db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values, function (err) {
+    if (err) {
+      console.error('Failed to update user:', err.message);
+      return res.status(500).json({ error: 'Unable to update user.' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json({ success: true, id });
   });
 });
 
@@ -656,7 +790,10 @@ app.post('/api/checkout', checkAuth, (req, res) => {
 });
 
 app.get('/api/transactions', (req, res) => {
-  db.all('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 20', [], (err, rows) => {
+  db.all(`SELECT t.id, t.created_at, t.payment_method, t.subtotal, t.discount, t.tax, t.total,
+      (SELECT COUNT(*) FROM transaction_items WHERE transaction_id = t.id) AS item_count
+    FROM transactions t
+    ORDER BY t.created_at DESC LIMIT 20`, [], (err, rows) => {
     if (err) {
       console.error('Failed to load transactions:', err.message);
       return res.status(500).json({ error: 'Unable to load transactions' });
