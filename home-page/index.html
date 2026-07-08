@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Retail POS System</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
   
@@ -71,7 +71,7 @@
             </div>
             <div class="scanner-status-row">
               <span>Status:</span>
-              <strong id="scannerStatusText">Disconnected</strong>
+              <strong id="scannerStatusText">Ready to pair</strong>
             </div>
             <div class="scanner-details hidden" id="scannerDetails">
               <p class="scanner-instruction">Scan this QR code with your phone to open the scanning page.</p>
@@ -126,13 +126,10 @@
           </div>
 
           <div class="payment-grid">
-            <button class="payment-button payment-cash" type="button" onclick="processCashPayment()">Cash</button>
-            <button class="payment-button payment-card" type="button" onclick="processCardPayment()">Card</button>
-            <button class="payment-button payment-wallet" type="button" onclick="processDigitalWalletPayment()">Digital Wallet</button>
+            <button class="payment-button payment-primary" type="button" onclick="goToCheckout()">Proceed to checkout</button>
           </div>
 
           <div class="secondary-actions">
-            <button class="secondary-button" type="button" onclick="holdTransaction()">Hold Transaction</button>
             <button class="secondary-button danger" type="button" onclick="clearCart()">Clear Cart</button>
           </div>
         </aside>
@@ -319,6 +316,6 @@
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>

@@ -292,6 +292,11 @@ img { display:block; max-width:100%; height:auto; }
   font-weight:700;
   transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
+.payment-button.payment-primary {
+  background: linear-gradient(180deg, var(--primary), #1f4ed8);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.12);
+}
 .payment-cash { background:linear-gradient(180deg,#ffffff,#fbfdff); border:1px solid var(--glass-border); }
 .payment-cash { color: #000; }
 .payment-card { background: linear-gradient(180deg,var(--primary), #1f4ed8); color:#fff; box-shadow: 0 10px 20px rgba(37,99,235,0.08); }

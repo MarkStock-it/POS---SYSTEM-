@@ -65,6 +65,30 @@ function scanBarcode(barcode) {
   showToast('Barcode not found in inventory', 'danger');
 }
 
+function saveCartState() {
+  try {
+    sessionStorage.setItem('posCart', JSON.stringify(state.cart));
+    sessionStorage.setItem('posDiscountPercent', String(state.discountPercent || 0));
+  } catch (error) {
+    console.warn('Unable to save cart state:', error);
+  }
+}
+
+function loadCartState() {
+  try {
+    const savedCart = sessionStorage.getItem('posCart');
+    const savedDiscount = sessionStorage.getItem('posDiscountPercent');
+    if (savedCart) {
+      state.cart = JSON.parse(savedCart) || [];
+    }
+    if (savedDiscount) {
+      state.discountPercent = Number(savedDiscount) || 0;
+    }
+  } catch (error) {
+    console.warn('Unable to restore cart state from session storage', error);
+  }
+}
+
 const scannerState = {
   sessionId: null,
   socket: null,
@@ -80,8 +104,9 @@ function generateSessionId() {
 function updateScannerStatus(status, detail = '') {
   const statusText = document.getElementById('scannerStatusText');
   if (!statusText) return;
-  statusText.textContent = status;
-  statusText.className = status.toLowerCase().includes('connected') ? 'status-connected' : status.toLowerCase().includes('disconnected') ? 'status-disconnected' : '';
+  const normalized = String(status || 'Ready to pair').toLowerCase();
+  statusText.textContent = status || 'Ready to pair';
+  statusText.className = normalized.includes('connected') ? 'status-connected' : normalized.includes('disconnected') ? 'status-disconnected' : '';
   document.getElementById('scannerDetails').classList.toggle('hidden', !scannerState.sessionId);
 }
 
@@ -319,6 +344,8 @@ function renderCart() {
   const discountInput = document.getElementById('discountInput');
   if (discountInput) discountInput.value = String(state.discountPercent || 0);
 
+  saveCartState();
+
   if (!state.cart.length) {
     cartContainer.innerHTML = '<div class="table-note">Your cart is empty. Add items from the product list to begin.</div>';
     return;
@@ -451,6 +478,23 @@ function clearCart() {
   showToast('Cart cleared successfully');
 }
 
+function goToCheckout() {
+  if (!state.cart.length) {
+    showToast('Cart is empty. Add products before checkout.', 'danger');
+    return;
+  }
+
+  const checkoutData = {
+    cart: state.cart,
+    discountPercent: state.discountPercent || 0,
+    totals: calculateTotals(),
+    createdAt: new Date().toISOString(),
+  };
+
+  sessionStorage.setItem('posCheckoutData', JSON.stringify(checkoutData));
+  window.location.href = 'checkout.html';
+}
+
 function logoutFromHome() {
   try {
     localStorage.removeItem('posCurrentUser');
@@ -514,21 +558,53 @@ function fetchProducts() {
   if (searchValue) query.set('search', searchValue);
   if (state.activeStockFilter && state.activeStockFilter !== 'all') query.set('stock', state.activeStockFilter);
 
-  return fetch(`/products?${query.toString()}`, {
-    headers: getApiHeaders(),
-  })
-    .then(parseJsonResponse)
+  const paths = [
+    `/products?${query.toString()}`,
+    `/api/products?${query.toString()}`,
+    `${window.location.origin}/products?${query.toString()}`,
+    `${window.location.origin}/api/products?${query.toString()}`,
+  ];
+
+  const tryFetch = (index) => {
+    if (index >= paths.length) {
+      return Promise.reject(new Error('No available product endpoints')); 
+    }
+
+    const path = paths[index];
+    return fetch(path, { headers: getApiHeaders() })
+      .then(parseJsonResponse)
+      .then((products) => {
+        if (!Array.isArray(products)) {
+          throw new Error(`Invalid product response from ${path}`);
+        }
+        return products;
+      })
+      .catch((error) => {
+        console.warn(`Product fetch failed for ${path}:`, error.message || error);
+        return tryFetch(index + 1);
+      });
+  };
+
+  return tryFetch(0)
     .then((products) => {
-      state.products = Array.isArray(products) ? products : [];
+      state.products = products;
       renderCategoryPills();
       renderProductGrid();
       renderInventoryTable();
       renderInventoryCards();
       renderCategoryList();
+      return products;
     })
     .catch((error) => {
       console.error('Unable to fetch products:', error);
-      showToast('Unable to load products', 'danger');
+      showToast('Unable to load products. Please refresh the page.', 'danger');
+      state.products = [];
+      renderCategoryPills();
+      renderProductGrid();
+      renderInventoryTable();
+      renderInventoryCards();
+      renderCategoryList();
+      return [];
     });
 }
 
@@ -948,5 +1024,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   renderScannerInfo();
+  loadCartState();
+  renderCart();
   loadProducts();
 });

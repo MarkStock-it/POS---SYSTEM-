@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout - Retail POS System</title>
+  <link rel="stylesheet" href="checkout.css?v=1" />
+</head>
+<body>
+  <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark and light mode">
+    <svg id="sunIcon" class="theme-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+    <svg id="moonIcon" class="theme-icon" style="display: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+  </button>
+
+  <div class="checkout-shell">
+    <header class="checkout-header">
+      <div>
+        <p class="eyebrow">Checkout Review</p>
+        <h1>Confirm your order</h1>
+        <p class="subheading">Review the order summary, choose payment, and complete the sale.</p>
+      </div>
+      <div class="header-actions">
+        <button class="secondary-button" type="button" id="backButton">Back to POS</button>
+      </div>
+    </header>
+
+    <main class="checkout-content">
+      <section class="checkout-details">
+        <div class="panel-card">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Order items</p>
+              <h2>Order summary</h2>
+            </div>
+          </div>
+          <div id="checkoutItems" class="checkout-items">
+            <div class="empty-state">No order data available. Return to POS to start a sale.</div>
+          </div>
+          <nav id="paginationControls" class="pagination" aria-label="Checkout item pagination"></nav>
+        </div>
+      </section>
+
+      <aside class="checkout-summary">
+        <div class="panel-card">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Payment details</p>
+              <h2>Order total</h2>
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span id="summarySubtotal">$0.00</span>
+            </div>
+            <div class="summary-row">
+              <span>Discount</span>
+              <span id="summaryDiscount">$0.00</span>
+            </div>
+            <div class="summary-row">
+              <span>Tax</span>
+              <span id="summaryTax">$0.00</span>
+            </div>
+            <div class="summary-row total-row">
+              <span>Total</span>
+              <strong id="summaryTotal">$0.00</strong>
+            </div>
+          </div>
+
+          <label class="field-group">
+            <span>Payment Method</span>
+            <select id="paymentMethodSelect">
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="Digital Wallet">Digital Wallet</option>
+            </select>
+          </label>
+
+          <div class="checkout-actions">
+            <button class="primary-button" type="button" id="confirmButton">Complete checkout</button>
+            <button class="secondary-button" type="button" id="editButton">Edit order</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <div id="toastMessage" class="toast hidden" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="checkout.js?v=1"></script>
+</body>
+</html>

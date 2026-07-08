@@ -202,6 +202,12 @@ initDatabase();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.get('/', (req, res) => {
+  return res.redirect('/home-page/index.html');
+});
+app.get('/home-page', (req, res) => {
+  return res.redirect('/home-page/index.html');
+});
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
