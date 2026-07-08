@@ -131,6 +131,15 @@ function getUserByIdentifier(identifier) {
   });
 }
 
+function normalizeRoleValue(role, fallback = "cashier") {
+  const value = String(role || "").trim().toLowerCase();
+  if (!value) return fallback;
+  if (["superadmin", "super admin", "super_admin", "super-admin"].includes(value)) return "super-admin";
+  if (["administrator", "admin"].includes(value)) return "admin";
+  if (["manager"].includes(value)) return "manager";
+  return value === "cashier" ? "cashier" : fallback;
+}
+
 function inferRoleFromIdentifier(identifier, fallback = "cashier") {
   const value = String(identifier || "").trim().toLowerCase();
   if (value.includes("super") || value.includes("system")) return "super-admin";
@@ -140,7 +149,7 @@ function inferRoleFromIdentifier(identifier, fallback = "cashier") {
 }
 
 function setCurrentUser(user) {
-  const normalizedRole = String(user.role || inferRoleFromIdentifier(user.email || user.username || "", "cashier")).trim().toLowerCase();
+  const normalizedRole = normalizeRoleValue(user.role || inferRoleFromIdentifier(user.email || user.username || "", "cashier"), "cashier");
   localStorage.setItem("posCurrentUser", JSON.stringify({
     ...user,
     role: normalizedRole,
@@ -230,18 +239,39 @@ loginForm.addEventListener("submit", async (e) => {
   }
 
   let user = getUserByIdentifier(identifier);
-  if (!user || user.password !== password) {
-    try {
-      const backendUser = await window.authApi?.loginWithBackend?.(identifier, password);
+  let backendUser = null;
+
+  try {
+    backendUser = await window.authApi?.loginWithBackend?.(identifier, password);
+    if (backendUser) {
       user = backendUser;
-    } catch (error) {
+      const normalizedRole = normalizeRoleValue(backendUser.role || inferRoleFromIdentifier(identifier, "cashier"), "cashier");
+      const storedUsers = getStoredUsers();
+      const existingIndex = storedUsers.findIndex((storedUser) => String(storedUser.email || "").toLowerCase() === String(backendUser.email || "").toLowerCase());
+      const syncedUser = {
+        fullName: backendUser.fullName || backendUser.full_name || backendUser.name || "",
+        email: backendUser.email || "",
+        username: backendUser.username || backendUser.email || "",
+        role: normalizedRole,
+        password,
+        createdAt: new Date().toISOString(),
+      };
+      if (existingIndex >= 0) {
+        storedUsers[existingIndex] = { ...storedUsers[existingIndex], ...syncedUser };
+      } else {
+        storedUsers.push(syncedUser);
+      }
+      localStorage.setItem("posUsers", JSON.stringify(storedUsers));
+    }
+  } catch (error) {
+    if (!user || String(user.password || "") !== String(password)) {
       showFieldError(emailInput, "Invalid login credentials. Please try again.");
       showFieldError(passwordInput, "Invalid login credentials.");
       return;
     }
   }
 
-  const normalizedRole = String(user.role || inferRoleFromIdentifier(identifier, "cashier")).trim().toLowerCase();
+  const normalizedRole = normalizeRoleValue(user.role || inferRoleFromIdentifier(identifier, "cashier"), "cashier");
 
   // Show loading state
   loginButton.classList.add("loading");

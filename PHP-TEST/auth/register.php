@@ -38,10 +38,11 @@ if (!$stmt->execute()) {
     exit;
 }
 
+$responseRole = $roleType === 'super_admin' ? 'super-admin' : $roleType;
 echo json_encode([
     'id' => (int) $mysqli->insert_id,
     'fullName' => $fullName,
     'email' => $email,
     'username' => $username,
-    'role' => $roleType,
+    'role' => $responseRole,
 ]);

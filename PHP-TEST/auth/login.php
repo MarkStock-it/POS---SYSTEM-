@@ -27,10 +27,12 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
     exit;
 }
 
+$normalizedRole = $user['role'] === 'super_admin' ? 'super-admin' : ($user['role'] === 'admin' ? 'admin' : ($user['role'] === 'manager' ? 'manager' : 'cashier'));
+
 echo json_encode([
     'id' => (int) $user['id'],
     'fullName' => $user['full_name'],
     'email' => $user['email'],
     'username' => $user['email'],
-    'role' => $user['role'],
+    'role' => $normalizedRole,
 ]);

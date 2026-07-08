@@ -12,6 +12,15 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const MONGO_DB = process.env.MONGO_DB || 'pos_system';
 const MONGO_ENABLED = process.env.MONGO_ENABLED === 'true' || process.env.MONGO_URI;
 
+function normalizeRoleValue(role, fallback = 'cashier') {
+  const value = String(role || '').trim().toLowerCase();
+  if (!value) return fallback;
+  if (['superadmin', 'super admin', 'super_admin', 'super-admin'].includes(value)) return 'super-admin';
+  if (['administrator', 'admin'].includes(value)) return 'admin';
+  if (['manager'].includes(value)) return 'manager';
+  return value === 'cashier' ? 'cashier' : fallback;
+}
+
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
     console.error('Unable to open SQLite database:', err.message);
@@ -446,7 +455,7 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
         updates.password = String(req.body.password || '');
       }
       if (req.body.role !== undefined) {
-        updates.role = String(req.body.role || 'cashier').trim().toLowerCase();
+        updates.role = normalizeRoleValue(req.body.role, 'cashier');
       }
       if (req.body.status !== undefined) {
         updates.status = String(req.body.status || 'active').trim().toLowerCase();
@@ -494,7 +503,7 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
   }
   if (req.body.role !== undefined) {
     updates.push('role = ?');
-    values.push(String(req.body.role || 'cashier').trim().toLowerCase());
+    values.push(normalizeRoleValue(req.body.role, 'cashier'));
   }
   if (req.body.status !== undefined) {
     updates.push('status = ?');
@@ -570,7 +579,7 @@ app.post('/api/auth/login', async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         username: user.username,
-        role: user.role,
+        role: normalizeRoleValue(user.role, 'cashier'),
       });
     }
   );
@@ -581,7 +590,7 @@ app.post('/api/auth/register', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const username = String(req.body.username || email.split('@')[0] || '').trim();
   const password = String(req.body.password || '');
-  const role = String(req.body.role || 'cashier').trim().toLowerCase();
+  const role = normalizeRoleValue(req.body.role, 'cashier');
 
   if (!fullName || !email || !password) {
     return res.status(400).json({ error: 'Full name, email, and password are required.' });
