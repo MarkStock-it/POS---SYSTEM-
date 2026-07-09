@@ -8,9 +8,9 @@ Here is the complete, updated code block. It keeps all of your database logic an
 ```php
 <?php
 $host = getenv('DB_HOST') ?: 'localhost';
-$user = getenv('DB_USER') ?: 's25103705_POSSYSTER';
-$password = getenv('DB_PASSWORD') ?: '';
-$database = getenv('DB_NAME') ?: 's25103705_POSSYSTER';
+$user = getenv('DB_USER') ?: 's25103705_Ely';
+$password = getenv('DB_PASSWORD') ?: 'Jumong09';
+$database = getenv('DB_NAME') ?: 's25103705_Ely';
 $port = (int) (getenv('DB_PORT') ?: 3306);
 $socket = getenv('DB_SOCKET') ?: null;
 
