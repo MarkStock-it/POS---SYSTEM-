@@ -92,6 +92,9 @@ function phpCliMiddleware(req, res, next) {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
+    child.stdin.write(body);
+    child.stdin.end();
+
     let stdout = '';
     let stderr = '';
 
