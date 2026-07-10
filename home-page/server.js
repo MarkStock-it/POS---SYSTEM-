@@ -1,7 +1,10 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const http = require('http');
+const { spawn } = require('child_process');
 const WebSocket = require('ws');
 const { MongoClient, ObjectId } = require('mongodb');
 
@@ -11,6 +14,128 @@ const DB_PATH = path.join(__dirname, 'pos.db');
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const MONGO_DB = process.env.MONGO_DB || 'pos_system';
 const MONGO_ENABLED = process.env.MONGO_ENABLED === 'true' || process.env.MONGO_URI;
+const PHP_TEST_ROOT = path.resolve(__dirname, '..', 'PHP-TEST');
+const PHP_BOOTSTRAP_PATH = path.join(os.tmpdir(), 'php-test-bootstrap.php');
+
+fs.writeFileSync(
+  PHP_BOOTSTRAP_PATH,
+  `<?php
+$_SERVER['REQUEST_METHOD'] = getenv('REQUEST_METHOD') ?: 'GET';
+$_SERVER['REQUEST_URI'] = getenv('REQUEST_URI') ?: '/';
+$_SERVER['QUERY_STRING'] = getenv('QUERY_STRING') ?: '';
+$_SERVER['CONTENT_TYPE'] = getenv('CONTENT_TYPE') ?: '';
+$_SERVER['CONTENT_LENGTH'] = getenv('CONTENT_LENGTH') ?: '';
+$_GET = [];
+if ($_SERVER['QUERY_STRING'] !== '') {
+  parse_str($_SERVER['QUERY_STRING'], $_GET);
+}
+$_POST = [];
+?>`
+);
+
+function phpCliMiddleware(req, res, next) {
+  let requestTarget = '';
+  try {
+    requestTarget = decodeURIComponent(req.originalUrl || req.url || req.path || '/');
+  } catch (error) {
+    return res.status(400).json({ error: 'Invalid request URL' });
+  }
+
+  const queryIndex = requestTarget.indexOf('?');
+  const pathname = queryIndex >= 0 ? requestTarget.slice(0, queryIndex) : requestTarget;
+  const rawPathWithoutQuery = pathname.split('?')[0];
+  const hasDotSegments = rawPathWithoutQuery.includes('/../') || rawPathWithoutQuery === '/..' || rawPathWithoutQuery.startsWith('../') || rawPathWithoutQuery.includes('..\\');
+  if (hasDotSegments) {
+    return res.status(400).json({ error: 'Invalid PHP script path' });
+  }
+
+  if (!pathname.startsWith('/PHP-TEST/')) {
+    return next();
+  }
+
+  const relativePath = pathname.replace(/^\/PHP-TEST\//, '').replace(/^\/+/, '');
+
+  if (!relativePath.endsWith('.php')) {
+    return next();
+  }
+
+  const requestedPath = path.resolve(PHP_TEST_ROOT, relativePath);
+  const relativeToRoot = path.relative(PHP_TEST_ROOT, requestedPath);
+  const isSafePath = relativeToRoot === '' || (!relativeToRoot.startsWith('..') && !path.isAbsolute(relativeToRoot));
+
+  if (!isSafePath || path.extname(requestedPath).toLowerCase() !== '.php') {
+    return res.status(400).json({ error: 'Invalid PHP script path' });
+  }
+
+  if (!fs.existsSync(requestedPath) || !fs.statSync(requestedPath).isFile()) {
+    return res.status(404).json({ error: 'PHP script not found' });
+  }
+
+  const chunks = [];
+  const queryString = queryIndex >= 0 ? requestTarget.slice(queryIndex + 1) : '';
+
+  req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+  req.on('end', () => {
+    const body = Buffer.concat(chunks);
+    const env = {
+      ...process.env,
+      REQUEST_METHOD: req.method,
+      CONTENT_TYPE: req.headers['content-type'] || '',
+      CONTENT_LENGTH: String(body.length),
+      QUERY_STRING: queryString,
+      REQUEST_URI: requestTarget
+    };
+
+    const child = spawn('php', ['-d', `auto_prepend_file=${PHP_BOOTSTRAP_PATH}`, requestedPath], {
+      cwd: PHP_TEST_ROOT,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8');
+    });
+
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString('utf8');
+    });
+
+    child.on('error', (error) => {
+      console.error('PHP CLI spawn failed:', error.message);
+      return res.status(500).json({ error: 'PHP execution failed', details: error.message });
+    });
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`PHP script failed (${code}):`, stderr.trim());
+        return res.status(500).json({ error: 'PHP script failed', details: stderr.trim() || 'Unknown PHP error' });
+      }
+
+      const output = stdout.trim();
+      if (/^HTTP\/[0-9.]+\s+[0-9]{3}/i.test(output) || /^Status:\s+/i.test(output)) {
+        res.set('Content-Type', 'text/plain; charset=utf-8');
+        return res.send(output);
+      }
+
+      res.set('Content-Type', 'application/json');
+      return res.send(output || '{}');
+    });
+
+    if (body.length) {
+      child.stdin.end(body);
+    } else {
+      child.stdin.end();
+    }
+  });
+
+  req.on('error', (error) => {
+    console.error('Request stream error:', error.message);
+    return res.status(400).json({ error: 'Request stream error' });
+  });
+}
 
 function normalizeRoleValue(role, fallback = 'cashier') {
   const value = String(role || '').trim().toLowerCase();
@@ -209,6 +334,7 @@ function initDatabase() {
 
 initDatabase();
 
+app.use(phpCliMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
