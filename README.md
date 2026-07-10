@@ -8,8 +8,8 @@ You can set a global base URL that the frontend will use for API calls by adding
 
 ```html
 <script>
-  // example: set to the folder that contains the POS project on the server
-  window.PHP_API_BASE_URL = '/~s25103705_Ely/POS---SYSTEM-';
+  // example: for a subdomain-root deployment, use the site root
+  window.PHP_API_BASE_URL = '/';
 </script>
 ```
 
