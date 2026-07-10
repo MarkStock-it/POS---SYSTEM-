@@ -35,9 +35,9 @@ function joinApiUrl(baseUrl, endpoint) {
 
 function mapEndpointToPhpPath(url) {
   const endpointMap = {
-    '/api/auth/login': '/PHP-TEST/auth/login.php',
-    '/api/auth/register': '/PHP-TEST/auth/register.php',
-    '/api/auth/users': '/PHP-TEST/auth/users.php',
+    '/api/auth/login': 'PHP-TEST/auth/login.php',
+    '/api/auth/register': 'PHP-TEST/auth/register.php',
+    '/api/auth/users': 'PHP-TEST/auth/users.php',
   };
 
   return endpointMap[url] || url;
