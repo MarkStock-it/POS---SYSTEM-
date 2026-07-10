@@ -8,11 +8,11 @@ You can set a global base URL that the frontend will use for API calls by adding
 
 ```html
 <script>
-	// example: set to the subdirectory where your PHP scripts live
-	window.PHP_API_BASE_URL = '/~username/pos';
+  // example: set to the folder that contains the POS project on the server
+  window.PHP_API_BASE_URL = '/~s25103705_Ely/POS---SYSTEM-';
 </script>
 ```
 
-With no `window.PHP_API_BASE_URL` provided, the client will now convert absolute-root API paths (those starting with `/`) into relative paths (e.g. `/api/auth/register` -> `./api/auth/register`) so requests target the current app directory instead of the server root.
+The frontend now maps the auth calls to the actual PHP files in the project (`PHP-TEST/auth/login.php`, `register.php`, and `users.php`) so the register page can reach them on the university server.
 
-If you still get a 404, verify the backend script path on the server and update `window.PHP_API_BASE_URL` accordingly.
+If you still get a 404, verify the public folder name on the server and update `window.PHP_API_BASE_URL` accordingly.
