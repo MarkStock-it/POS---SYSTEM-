@@ -126,12 +126,6 @@ function phpCliMiddleware(req, res, next) {
       res.set('Content-Type', 'application/json');
       return res.send(output || '{}');
     });
-
-    if (body.length) {
-      child.stdin.end(body);
-    } else {
-      child.stdin.end();
-    }
   });
 
   req.on('error', (error) => {
