@@ -222,10 +222,19 @@
   }
 
   async function loadUsers(targetTableId) {
+    const tableBody = document.getElementById(targetTableId);
+    if (!tableBody) return;
+    tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading users...</td></tr>';
+
     try {
-      const users = await fetchJson('/api/auth/users');
-      const tableBody = document.getElementById(targetTableId);
-      if (!tableBody) return;
+      let users = [];
+      try {
+        users = await fetchJson('/PHP-TEST/auth/users.php');
+      } catch (phpError) {
+        console.warn('PHP user list failed, falling back to Node API:', phpError.message || phpError);
+        users = await fetchJson('/api/auth/users');
+      }
+
       if (!Array.isArray(users) || !users.length) {
         tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No users found.</td></tr>';
         return;
