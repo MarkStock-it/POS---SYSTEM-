@@ -33,18 +33,12 @@ function joinApiUrl(baseUrl, endpoint) {
   return `${base}/${endpointPath}`;
 }
 
-function mapEndpointToPhpPath(url) {
-  const endpointMap = {
-    '/api/auth/login': 'PHP-TEST/auth/login.php',
-    '/api/auth/register': 'PHP-TEST/auth/register.php',
-    '/api/auth/users': 'PHP-TEST/auth/users.php',
-  };
-
-  return endpointMap[url] || url;
+function mapEndpointToApiPath(url) {
+  return url;
 }
 
 async function makeApiRequest(endpoint, options = {}) {
-  const targetUrl = joinApiUrl(getApiBaseUrl(), mapEndpointToPhpPath(endpoint));
+  const targetUrl = joinApiUrl(getApiBaseUrl(), mapEndpointToApiPath(endpoint));
   const response = await fetch(targetUrl, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
@@ -62,21 +56,21 @@ async function makeApiRequest(endpoint, options = {}) {
 }
 
 async function loginWithBackend(identifier, password) {
-  return makeApiRequest('/PHP-TEST/auth/login.php', {
+  return makeApiRequest('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ identifier, password }),
   });
 }
 
 async function registerWithBackend({ fullName, email, username, password, role }) {
-  return makeApiRequest('/PHP-TEST/auth/register.php', {
+  return makeApiRequest('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({ fullName, email, username, password, role }),
   });
 }
 
 async function fetchUsersFromBackend() {
-  return makeApiRequest('/PHP-TEST/auth/users.php');
+  return makeApiRequest('/api/auth/users');
 }
 
 window.authApi = {
