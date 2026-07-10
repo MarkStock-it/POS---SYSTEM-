@@ -20,6 +20,54 @@ const PHP_BOOTSTRAP_PATH = path.join(os.tmpdir(), 'php-test-bootstrap.php');
 fs.writeFileSync(
   PHP_BOOTSTRAP_PATH,
   `<?php
+class PhpCliInputStream {
+  private static $data = '';
+  private static $position = 0;
+  public static function setData($data) {
+    self::$data = (string) $data;
+    self::$position = 0;
+  }
+  public function stream_open($path, $mode, $options, &$opened_path) {
+    return true;
+  }
+  public function stream_read($count) {
+    $chunk = substr(self::$data, self::$position, $count);
+    self::$position += strlen($chunk);
+    return $chunk;
+  }
+  public function stream_eof() {
+    return self::$position >= strlen(self::$data);
+  }
+  public function stream_stat() {
+    return [];
+  }
+  public function stream_seek($offset, $whence) {
+    if ($whence === SEEK_SET) {
+      self::$position = $offset;
+    } elseif ($whence === SEEK_CUR) {
+      self::$position += $offset;
+    } elseif ($whence === SEEK_END) {
+      self::$position = strlen(self::$data) + $offset;
+    } else {
+      return false;
+    }
+    return true;
+  }
+  public function stream_tell() {
+    return self::$position;
+  }
+  public function stream_write($data) {
+    return 0;
+  }
+  public function stream_flush() {
+    return true;
+  }
+}
+PhpCliInputStream::setData(getenv('PHP_CLI_INPUT_BODY') ?: '');
+if (getenv('PHP_CLI_INPUT_BODY') !== false) {
+  stream_wrapper_unregister('php');
+  stream_wrapper_register('php', 'PhpCliInputStream');
+}
 $_SERVER['REQUEST_METHOD'] = getenv('REQUEST_METHOD') ?: 'GET';
 $_SERVER['REQUEST_URI'] = getenv('REQUEST_URI') ?: '/';
 $_SERVER['QUERY_STRING'] = getenv('QUERY_STRING') ?: '';
@@ -83,7 +131,8 @@ function phpCliMiddleware(req, res, next) {
       CONTENT_TYPE: req.headers['content-type'] || '',
       CONTENT_LENGTH: String(body.length),
       QUERY_STRING: queryString,
-      REQUEST_URI: requestTarget
+      REQUEST_URI: requestTarget,
+      PHP_CLI_INPUT_BODY: body.toString('utf8')
     };
 
     const child = spawn('php', ['-d', `auto_prepend_file=${PHP_BOOTSTRAP_PATH}`, requestedPath], {
