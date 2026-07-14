@@ -226,58 +226,75 @@
         </div>
 
         <form class="product-form" id="addProductForm" novalidate onsubmit="event.preventDefault(); saveProduct();">
-          <div class="grid-two">
+          <div class="image-row">
+            <div class="image-preview" id="imagePreview" style="background-image: none;">No image</div>
             <label class="field-group">
               <span>Product Image</span>
-              <input id="productImageInput" type="file" accept="image/*" onchange="previewProductImage(event)" />
+              <input id="productImageInput" type="file" accept="image/*" onchange="previewProductImage(event)">
             </label>
-            <div class="image-preview" id="imagePreview">Image preview</div>
           </div>
 
           <label class="field-group">
             <span>Image URL</span>
-            <input id="productImageUrl" type="text" placeholder="/images/product.jpg" />
+            <input id="productImageUrl" type="text" placeholder="/images/product.jpg">
           </label>
 
           <label class="field-group">
             <span>Product Name</span>
-            <input id="productName" type="text" placeholder="Enter product name" required />
+            <input id="productName" type="text" placeholder="Enter product name" required>
           </label>
 
           <label class="field-group">
             <span>Description</span>
-            <textarea id="productDescription" rows="4" placeholder="Add a product description"></textarea>
+            <textarea id="productDescription" rows="3" placeholder="Add a product description"></textarea>
           </label>
 
           <div class="grid-two">
             <label class="field-group">
               <span>Category</span>
-              <input id="productCategory" type="text" placeholder="Category name" required />
+              <input id="productCategory" type="text" placeholder="Category name" required>
             </label>
             <label class="field-group">
               <span>SKU / Barcode</span>
-              <input id="productSku" type="text" placeholder="SKU or barcode" required />
+              <input id="productSku" type="text" placeholder="SKU or barcode" required>
             </label>
           </div>
 
-          <div class="grid-three">
+          <div class="grid-two">
             <label class="field-group">
               <span>Cost Price</span>
-              <input id="productCost" type="number" step="0.01" min="0" placeholder="$0.00" />
-            </label>
-            <label class="field-group">
-              <span>Selling Price</span>
-              <input id="productPrice" type="number" step="0.01" min="0" placeholder="$0.00" required />
+              <input id="productCost" type="number" step="0.01" min="0" placeholder="$0.00" oninput="recalcSellingPrice()">
             </label>
             <label class="field-group">
               <span>Stock Quantity</span>
-              <input id="productStock" type="number" min="0" placeholder="0" required />
+              <input id="productStock" type="number" min="0" placeholder="0" required>
+            </label>
+          </div>
+
+          <div class="pricing">
+            <div class="pricing-header">
+              <span>Pricing Markup</span>
+            </div>
+            <div class="markup-line">
+              <input id="markupSlider" type="range" min="0" max="200" step="1" value="30" oninput="recalcSellingPrice()">
+              <span class="markup-value" id="markupPill">30%</span>
+            </div>
+            <div class="price-out">
+              <div class="figure">
+                <span class="amount" id="sellingPriceDisplay">$0.00</span>
+                <span class="margin" id="marginDisplay">+$0.00</span>
+              </div>
+              <span class="toggle" id="priceModeToggle" onclick="toggleManualPrice()">edit manually</span>
+            </div>
+            <label class="field-group" id="manualPriceField" style="display:none;">
+              <span>Selling Price (manual)</span>
+              <input id="productPrice" type="number" step="0.01" min="0" placeholder="$0.00" required oninput="onManualPriceInput()">
             </label>
           </div>
 
           <label class="field-group">
             <span>Minimum Stock Alert</span>
-            <input id="productThreshold" type="number" min="0" placeholder="Low stock threshold" />
+            <input id="productThreshold" type="number" min="0" placeholder="Low stock threshold">
           </label>
 
           <div class="modal-actions">
