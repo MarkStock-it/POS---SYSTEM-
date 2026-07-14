@@ -6,7 +6,6 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const togglePasswordBtn = document.getElementById("togglePassword");
 const loginButton = document.getElementById("loginButton");
-const signupButton = document.getElementById("signupButton");
 const forgotPasswordLink = document.getElementById("forgotPasswordLink");
 const successModal = document.getElementById("successModal");
 const toast = document.getElementById("toast");
@@ -315,11 +314,6 @@ loginForm.addEventListener("submit", async (e) => {
 // ============================================
 // SIGNUP & FORGOT PASSWORD
 // ============================================
-signupButton.addEventListener("click", () => {
-  const registerUrl = new URL("../register-page/register.html", window.location.href).href;
-  window.location.href = registerUrl;
-});
-
 forgotPasswordLink.addEventListener("click", (e) => {
   e.preventDefault();
   showToast("Password reset feature coming soon!", "error");

@@ -282,7 +282,7 @@ app.use(phpCliMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
-  return res.redirect('/home-page/index.html');
+  return res.redirect('/login-page/login.html');
 });
 app.get('/home-page', (req, res) => {
   return res.redirect('/home-page/index.html');
