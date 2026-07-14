@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const http = require('http');
 const { spawn } = require('child_process');
 const WebSocket = require('ws');
@@ -14,32 +13,41 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const MONGO_DB = process.env.MONGO_DB || 'pos_system';
 const MONGO_ENABLED = process.env.MONGO_ENABLED === 'true' || process.env.MONGO_URI;
 const PHP_TEST_ROOT = path.resolve(__dirname, '..', 'PHP-TEST');
-const PHP_BOOTSTRAP_PATH = path.join(os.tmpdir(), 'php-test-bootstrap.php');
+const PHP_BRIDGE_ROOT = path.resolve(__dirname, '..', 'php-bridge');
+const PHP_BOOTSTRAP_PATH = path.join(PHP_BRIDGE_ROOT, 'bootstrap.php');
 
-fs.writeFileSync(
-  PHP_BOOTSTRAP_PATH,
-  `<?php
+function ensurePhpBootstrapFile() {
+  fs.mkdirSync(PHP_BRIDGE_ROOT, { recursive: true });
+
+  if (!fs.existsSync(PHP_BOOTSTRAP_PATH) || fs.statSync(PHP_BOOTSTRAP_PATH).size === 0) {
+    const bootstrapContent = `<?php
 class PhpCliInputStream {
   private static $data = '';
   private static $position = 0;
+
   public static function setData($data) {
     self::$data = (string) $data;
     self::$position = 0;
   }
+
   public function stream_open($path, $mode, $options, &$opened_path) {
     return true;
   }
+
   public function stream_read($count) {
     $chunk = substr(self::$data, self::$position, $count);
     self::$position += strlen($chunk);
     return $chunk;
   }
+
   public function stream_eof() {
     return self::$position >= strlen(self::$data);
   }
+
   public function stream_stat() {
     return [];
   }
+
   public function stream_seek($offset, $whence) {
     if ($whence === SEEK_SET) {
       self::$position = $offset;
@@ -52,33 +60,65 @@ class PhpCliInputStream {
     }
     return true;
   }
+
   public function stream_tell() {
     return self::$position;
   }
+
   public function stream_write($data) {
     return 0;
   }
+
   public function stream_flush() {
     return true;
   }
 }
-PhpCliInputStream::setData(getenv('PHP_CLI_INPUT_BODY') ?: '');
-if (getenv('PHP_CLI_INPUT_BODY') !== false) {
+
+$rawBody = getenv('PHP_CLI_INPUT_BODY');
+if ($rawBody !== false) {
+  PhpCliInputStream::setData($rawBody);
   stream_wrapper_unregister('php');
   stream_wrapper_register('php', 'PhpCliInputStream');
 }
+
 $_SERVER['REQUEST_METHOD'] = getenv('REQUEST_METHOD') ?: 'GET';
 $_SERVER['REQUEST_URI'] = getenv('REQUEST_URI') ?: '/';
 $_SERVER['QUERY_STRING'] = getenv('QUERY_STRING') ?: '';
 $_SERVER['CONTENT_TYPE'] = getenv('CONTENT_TYPE') ?: '';
 $_SERVER['CONTENT_LENGTH'] = getenv('CONTENT_LENGTH') ?: '';
+$_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
+$_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
+$_SERVER['SCRIPT_FILENAME'] = $_SERVER['REQUEST_URI'];
+
 $_GET = [];
 if ($_SERVER['QUERY_STRING'] !== '') {
   parse_str($_SERVER['QUERY_STRING'], $_GET);
 }
+
 $_POST = [];
-?>`
-);
+if ($rawBody !== false && $rawBody !== '') {
+  $contentType = strtolower((string) $_SERVER['CONTENT_TYPE']);
+  if (str_contains($contentType, 'application/json')) {
+    $decodedJson = json_decode($rawBody, true);
+    if (is_array($decodedJson)) {
+      $_POST = $decodedJson;
+    }
+  } elseif (str_contains($contentType, 'application/x-www-form-urlencoded')) {
+    parse_str($rawBody, $_POST);
+  }
+}
+
+$_REQUEST = array_merge($_GET, $_POST);
+?>`;
+
+    fs.writeFileSync(PHP_BOOTSTRAP_PATH, bootstrapContent, 'utf8');
+    console.log(`[php-bridge] Created bootstrap file at ${PHP_BOOTSTRAP_PATH}`);
+  }
+
+  return PHP_BOOTSTRAP_PATH;
+}
+
+ensurePhpBootstrapFile();
 
 function phpCliMiddleware(req, res, next) {
   let requestTarget = '';
@@ -124,6 +164,13 @@ function phpCliMiddleware(req, res, next) {
   req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
   req.on('end', () => {
     const body = Buffer.concat(chunks);
+    const bootstrapPath = ensurePhpBootstrapFile();
+
+    if (!fs.existsSync(bootstrapPath) || !fs.statSync(bootstrapPath).isFile()) {
+      console.error(`[php-bridge] Bootstrap file missing at ${bootstrapPath}`);
+      return res.status(500).json({ error: 'PHP bridge bootstrap is missing', details: `Expected bootstrap file at ${bootstrapPath}` });
+    }
+
     const env = {
       ...process.env,
       REQUEST_METHOD: req.method,
@@ -134,7 +181,14 @@ function phpCliMiddleware(req, res, next) {
       PHP_CLI_INPUT_BODY: body.toString('utf8')
     };
 
-    const child = spawn('php', ['-d', `auto_prepend_file=${PHP_BOOTSTRAP_PATH}`, requestedPath], {
+    let settled = false;
+    const finishWithError = (statusCode, payload) => {
+      if (settled) return;
+      settled = true;
+      return res.status(statusCode).json(payload);
+    };
+
+    const child = spawn('php', ['-d', `auto_prepend_file=${bootstrapPath}`, requestedPath], {
       cwd: PHP_TEST_ROOT,
       env,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -155,23 +209,28 @@ function phpCliMiddleware(req, res, next) {
     });
 
     child.on('error', (error) => {
-      console.error('PHP CLI spawn failed:', error.message);
-      return res.status(500).json({ error: 'PHP execution failed', details: error.message });
+      console.error('[php-bridge] PHP CLI spawn failed:', error.message);
+      return finishWithError(500, { error: 'PHP execution failed', details: error.message });
     });
 
     child.on('close', (code) => {
+      if (settled) return;
+
       if (code !== 0) {
-        console.error(`PHP script failed (${code}):`, stderr.trim());
-        return res.status(500).json({ error: 'PHP script failed', details: stderr.trim() || 'Unknown PHP error' });
+        const phpDetails = stderr.trim() || `PHP exited with code ${code}`;
+        console.error(`[php-bridge] PHP script failed (${code}):`, phpDetails);
+        return finishWithError(500, { error: 'PHP script failed', details: phpDetails });
       }
 
       const output = stdout.trim();
       if (/^HTTP\/[0-9.]+\s+[0-9]{3}/i.test(output) || /^Status:\s+/i.test(output)) {
         res.set('Content-Type', 'text/plain; charset=utf-8');
+        settled = true;
         return res.send(output);
       }
 
       res.set('Content-Type', 'application/json');
+      settled = true;
       return res.send(output || '{}');
     });
   });
@@ -854,6 +913,16 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`POS backend listening on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`POS backend listening on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  server,
+  ensurePhpBootstrapFile,
+  phpCliMiddleware,
+  normalizeRoleValue,
+};
