@@ -218,35 +218,6 @@ function submitCheckout() {
     });
 }
 
-function initTheme() {
-  const htmlElement = document.documentElement;
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  htmlElement.setAttribute('data-theme', savedTheme);
-  updateThemeIcons(savedTheme);
-}
-
-function updateThemeIcons(theme) {
-  const sunIcon = document.getElementById('sunIcon');
-  const moonIcon = document.getElementById('moonIcon');
-  if (!sunIcon || !moonIcon) return;
-  if (theme === 'light') {
-    sunIcon.style.display = 'block';
-    moonIcon.style.display = 'none';
-  } else {
-    sunIcon.style.display = 'none';
-    moonIcon.style.display = 'block';
-  }
-}
-
-function toggleTheme() {
-  const htmlElement = document.documentElement;
-  const currentTheme = htmlElement.getAttribute('data-theme') || 'dark';
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  htmlElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  updateThemeIcons(newTheme);
-}
-
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('paymentMethodSelect')?.addEventListener('change', (event) => {
     checkoutState.paymentMethod = event.target.value;
@@ -257,11 +228,11 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('confirmButton')?.addEventListener('click', submitCheckout);
-  document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
+  document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
   document.getElementById('editButton')?.addEventListener('click', () => {
     window.location.href = 'index.html';
   });
 
-  initTheme();
+  themeUtils.initTheme();
   loadCheckoutData();
 });

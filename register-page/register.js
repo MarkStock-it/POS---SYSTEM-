@@ -364,50 +364,12 @@ confirmPasswordInput.addEventListener("keydown", (e) => {
 });
 
 // ============================================
-// THEME MANAGEMENT
-// ============================================
-const themeToggle = document.getElementById("themeToggle");
-const sunIcon = document.getElementById("sunIcon");
-const moonIcon = document.getElementById("moonIcon");
-const htmlElement = document.documentElement;
-
-function initTheme() {
-  const savedTheme = localStorage.getItem("theme") || "dark";
-  htmlElement.setAttribute("data-theme", savedTheme);
-  updateThemeIcons(savedTheme);
-}
-
-function updateThemeIcons(theme) {
-  if (theme === "light") {
-    sunIcon.style.display = "block";
-    moonIcon.style.display = "none";
-  } else {
-    sunIcon.style.display = "none";
-    moonIcon.style.display = "block";
-  }
-}
-
-function toggleTheme() {
-  const currentTheme = htmlElement.getAttribute("data-theme") || "dark";
-  const newTheme = currentTheme === "light" ? "dark" : "light";
-  htmlElement.setAttribute("data-theme", newTheme);
-  localStorage.setItem("theme", newTheme);
-  updateThemeIcons(newTheme);
-}
-
-themeToggle.addEventListener("click", toggleTheme);
-
-// ============================================
 // INITIALIZATION
 // ============================================
 window.addEventListener("load", () => {
-  initTheme();
+  themeUtils.initTheme();
+  document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
   // Auto-focus full name field
   fullNameInput.focus();
 });
 
-// Demo credentials hint (remove in production)
-console.log("📝 Demo Registration Available:");
-console.log("   Full Name: Demo User (min 2 characters)");
-console.log("   Email: demo@pos.com (or valid email format)");
-console.log("   Password: (min 6 characters, must match confirmation)");

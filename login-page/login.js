@@ -155,54 +155,6 @@ function setCurrentUser(user) {
   }));
 }
 
-function ensureDemoUserExists() {
-  const users = getStoredUsers();
-  const demoUsers = [
-    {
-      fullName: "Demo User",
-      email: "demo@pos.com",
-      username: "demouser",
-      password: "password",
-      role: "cashier",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      fullName: "Manager Demo",
-      email: "manager@pos.com",
-      username: "manager",
-      password: "manager123",
-      role: "manager",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      fullName: "Super Admin Demo",
-      email: "superadmin@pos.com",
-      username: "superadmin",
-      password: "superadmin123",
-      role: "super-admin",
-      createdAt: new Date().toISOString(),
-    },   
-    {
-      fullName: "Admin Demo",
-      email: "admin@pos.com",
-      username: "admin",
-      password: "admin123",
-      role: "admin",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  demoUsers.forEach((user) => {
-    const exists = users.some((storedUser) => storedUser.email.toLowerCase() === user.email.toLowerCase());
-    if (!exists) {
-      users.push(user);
-    }
-  });
-
-  localStorage.setItem("posUsers", JSON.stringify(users));
-}
-
-ensureDemoUserExists();
 
 // ============================================
 // FORM SUBMISSION
@@ -346,49 +298,13 @@ passwordInput.addEventListener("keydown", (e) => {
 });
 
 // ============================================
-// THEME MANAGEMENT
-// ============================================
-const themeToggle = document.getElementById("themeToggle");
-const sunIcon = document.getElementById("sunIcon");
-const moonIcon = document.getElementById("moonIcon");
-const htmlElement = document.documentElement;
-
-function initTheme() {
-  const savedTheme = localStorage.getItem("theme") || "dark";
-  htmlElement.setAttribute("data-theme", savedTheme);
-  updateThemeIcons(savedTheme);
-}
-
-function updateThemeIcons(theme) {
-  if (theme === "light") {
-    sunIcon.style.display = "block";
-    moonIcon.style.display = "none";
-  } else {
-    sunIcon.style.display = "none";
-    moonIcon.style.display = "block";
-  }
-}
-
-function toggleTheme() {
-  const currentTheme = htmlElement.getAttribute("data-theme") || "dark";
-  const newTheme = currentTheme === "light" ? "dark" : "light";
-  htmlElement.setAttribute("data-theme", newTheme);
-  localStorage.setItem("theme", newTheme);
-  updateThemeIcons(newTheme);
-}
-
-themeToggle.addEventListener("click", toggleTheme);
-
-// ============================================
 // INITIALIZATION
 // ============================================
 window.addEventListener("load", () => {
-  initTheme();
+  themeUtils.initTheme();
+  document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
   // Auto-focus email field
   emailInput.focus();
 });
 
-// Demo credentials hint (remove in production)
-console.log("📝 Demo Login Available:");
-console.log('   Email: demo@pos.com or "demouser"');
-console.log("   Password: password (any 3+ characters)");
+
