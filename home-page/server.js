@@ -1,5 +1,4 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -7,10 +6,10 @@ const http = require('http');
 const { spawn } = require('child_process');
 const WebSocket = require('ws');
 const { MongoClient, ObjectId } = require('mongodb');
+const { db, initDatabase } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'pos.db');
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const MONGO_DB = process.env.MONGO_DB || 'pos_system';
 const MONGO_ENABLED = process.env.MONGO_ENABLED === 'true' || process.env.MONGO_URI;
@@ -192,13 +191,6 @@ function normalizeRoleValue(role, fallback = 'cashier') {
   return value === 'cashier' ? 'cashier' : fallback;
 }
 
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Unable to open SQLite database:', err.message);
-    process.exit(1);
-  }
-});
-
 let mongoClient = null;
 let mongoDb = null;
 
@@ -217,168 +209,15 @@ async function connectMongo() {
 
 connectMongo();
 
-const sampleProducts = [
-  { id: '0001', name: 'Bottled Water 500ml', sku: '0001', barcode: '100000001', category: 'Beverages', price: 1.25, stock: 50, image: '/images/water.jpg' },
-  { id: '0002', name: 'Croissant', sku: '0002', barcode: '100000002', category: 'Bakery', price: 2.50, stock: 30, image: '/images/crossaint.jpeg' },
-  { id: '0003', name: 'Banana (per lb)', sku: '0003', barcode: '100000003', category: 'Produce', price: 0.69, stock: 100, image: '/images/bunch-bananas-6175887.jpg.webp' },
-  { id: '0004', name: 'Whole Milk 1L', sku: '0004', barcode: '100000004', category: 'Dairy', price: 3.10, stock: 40, image: '/images/milk.jpeg' },
-  { id: '0005', name: 'Potato Chips', sku: '0005', barcode: '100000005', category: 'Snacks', price: 2.99, stock: 25, image: '/images/Lays_XL_Classic_Laydown.png' },
-  { id: '0006', name: 'Coffee Beans 250g', sku: '0006', barcode: '100000006', category: 'Beverages', price: 6.75, stock: 20, image: '/images/coffee.jpeg' },
-  { id: '0007', name: 'Dish Soap 750ml', sku: '0007', barcode: '100000007', category: 'Household', price: 3.45, stock: 35, image: '/images/soap.jpg' },
-  { id: '0008', name: 'USB-C Cable 1m', sku: '0008', barcode: '100000008', category: 'Electronics', price: 8.99, stock: 15, image: '/images/usb-c.jpeg' },
-];
-
-function initDatabase() {
-  db.serialize(() => {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        sku TEXT UNIQUE NOT NULL,
-        barcode TEXT UNIQUE NOT NULL,
-        category TEXT NOT NULL,
-        price REAL NOT NULL,
-        stock INTEGER NOT NULL,
-        image TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        created_at TEXT DEFAULT (datetime('now')),
-        payment_method TEXT,
-        subtotal REAL,
-        discount REAL,
-        tax REAL,
-        total REAL
-      );
-
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'cashier',
-        status TEXT DEFAULT 'active',
-        created_at TEXT DEFAULT (datetime('now'))
-      );
-
-      CREATE TABLE IF NOT EXISTS transaction_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transaction_id INTEGER,
-        product_id TEXT,
-        name TEXT,
-        sku TEXT,
-        unit_price REAL,
-        quantity INTEGER,
-        line_total REAL,
-        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
-      );
-    `, (execErr) => {
-      if (execErr) {
-        console.error('Failed to initialize database schema:', execErr.message);
-        return;
-      }
-
-      const ensureColumns = (callback) => {
-        db.all('PRAGMA table_info(products)', (err, columns) => {
-          if (err) return callback(err);
-
-          const existingNames = columns.map((column) => column.name);
-          const tasks = [];
-
-          if (!existingNames.includes('description')) {
-            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN description TEXT', next));
-          }
-          if (!existingNames.includes('cost')) {
-            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN cost REAL DEFAULT 0', next));
-          }
-          if (!existingNames.includes('threshold')) {
-            tasks.push((next) => db.run('ALTER TABLE products ADD COLUMN threshold INTEGER DEFAULT 0', next));
-          }
-
-          db.all('PRAGMA table_info(users)', (userErr, userColumns) => {
-            if (userErr) return callback(userErr);
-            const existingUserColumns = userColumns.map((column) => column.name);
-            if (!existingUserColumns.includes('status')) {
-              tasks.push((next) => db.run('ALTER TABLE users ADD COLUMN status TEXT DEFAULT "active"', next));
-            }
-
-            const runNext = () => {
-              if (!tasks.length) return callback(null);
-              const task = tasks.shift();
-              task((taskErr) => {
-                if (taskErr) return callback(taskErr);
-                runNext();
-              });
-            };
-
-            runNext();
-          });
-        });
-      };
-
-      ensureColumns((ensureErr) => {
-        if (ensureErr) {
-          console.error('Failed to update product columns:', ensureErr.message);
-        }
-
-        db.run(`
-          INSERT OR IGNORE INTO users (full_name, email, username, password, role, status)
-          VALUES ('Super Admin Demo', 'superadmin@pos.com', 'superadmin', 'superadmin123', 'super-admin', 'active')
-        `);
-
-        db.run(`
-          INSERT OR IGNORE INTO users (full_name, email, username, password, role, status)
-          VALUES ('Demo User', 'demo@pos.com', 'demouser', 'password', 'cashier', 'active')
-        `);
-
-        db.run(`
-          INSERT OR IGNORE INTO transactions (id, created_at, payment_method, subtotal, discount, tax, total)
-          VALUES (1, '2026-07-06 06:30:00', 'card', 25.50, 0, 2.04, 27.54)
-        `);
-
-        db.run(`
-          INSERT OR IGNORE INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total)
-          VALUES (1, '0001', 'Bottled Water 500ml', '0001', 1.25, 2, 2.50)
-        `);
-
-        db.run(`
-          INSERT OR IGNORE INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total)
-          VALUES (1, '0005', 'Potato Chips', '0005', 2.99, 1, 2.99)
-        `);
-
-        const insertOrReplace = db.prepare(
-          'INSERT OR REPLACE INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-
-        sampleProducts.forEach((product) => {
-          insertOrReplace.run(
-            product.id,
-            product.name,
-            product.sku,
-            product.barcode,
-            product.category,
-            product.price,
-            product.stock,
-            product.image || null,
-            product.description || null,
-            product.cost || 0,
-            product.threshold || 0
-          );
-        });
-
-        insertOrReplace.finalize((finalizeErr) => {
-          if (finalizeErr) {
-            console.error('Failed to seed products:', finalizeErr.message);
-          }
-        });
-      });
-    });
-  });
+async function initializeDatabase() {
+  try {
+    await initDatabase();
+  } catch (error) {
+    console.error('Database initialization failed:', error.message);
+  }
 }
 
-initDatabase();
+initializeDatabase();
 
 app.use(phpCliMiddleware);
 app.use(express.json());
@@ -493,54 +332,35 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-app.get('/api/dashboard/summary', checkAuth, (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
+app.get('/api/dashboard/summary', checkAuth, async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [revenueRow] = await db.all('SELECT COALESCE(SUM(total), 0) AS todayRevenue FROM transactions WHERE DATE(created_at) = ?', [today]);
+    const [flagRow] = await db.all('SELECT COUNT(*) AS flaggedTransactions FROM transactions WHERE LOWER(payment_method) = "flagged"');
+    const [stockRow] = await db.all('SELECT COUNT(*) AS lowStockItems FROM products WHERE stock > 0 AND stock <= 10');
+    const [userRow] = await db.all(`SELECT COUNT(*) AS totalUsers,
+      SUM(CASE WHEN LOWER(role) = 'admin' THEN 1 ELSE 0 END) AS adminCount,
+      SUM(CASE WHEN LOWER(role) = 'manager' THEN 1 ELSE 0 END) AS managerCount,
+      SUM(CASE WHEN LOWER(role) = 'cashier' THEN 1 ELSE 0 END) AS cashierCount,
+      SUM(CASE WHEN LOWER(status) = 'active' THEN 1 ELSE 0 END) AS activeUsers
+    FROM users`);
 
-  db.get('SELECT COALESCE(SUM(total), 0) AS todayRevenue FROM transactions WHERE date(created_at) = ?', [today], (revenueErr, revenueRow) => {
-    if (revenueErr) {
-      console.error('Failed to load revenue summary:', revenueErr.message);
-      return res.status(500).json({ error: 'Unable to load summary' });
-    }
-
-    db.get('SELECT COUNT(*) AS flaggedTransactions FROM transactions WHERE LOWER(payment_method) = "flagged"', (flagErr, flagRow) => {
-      if (flagErr) {
-        console.error('Failed to load flagged transactions:', flagErr.message);
-        return res.status(500).json({ error: 'Unable to load summary' });
-      }
-
-      db.get('SELECT COUNT(*) AS lowStockItems FROM products WHERE stock > 0 AND stock <= 10', (stockErr, stockRow) => {
-        if (stockErr) {
-          console.error('Failed to load stock summary:', stockErr.message);
-          return res.status(500).json({ error: 'Unable to load summary' });
-        }
-
-        db.get(`SELECT COUNT(*) AS totalUsers,
-          SUM(CASE WHEN LOWER(role) = 'admin' THEN 1 ELSE 0 END) AS adminCount,
-          SUM(CASE WHEN LOWER(role) = 'manager' THEN 1 ELSE 0 END) AS managerCount,
-          SUM(CASE WHEN LOWER(role) = 'cashier' THEN 1 ELSE 0 END) AS cashierCount,
-          SUM(CASE WHEN LOWER(status) = 'active' THEN 1 ELSE 0 END) AS activeUsers
-        FROM users`, (userErr, userRow) => {
-          if (userErr) {
-            console.error('Failed to load user summary:', userErr.message);
-            return res.status(500).json({ error: 'Unable to load summary' });
-          }
-
-          res.json({
-            todayRevenue: Number(revenueRow?.todayRevenue || 0),
-            flaggedTransactions: Number(flagRow?.flaggedTransactions || 0),
-            lowStockItems: Number(stockRow?.lowStockItems || 0),
-            totalUsers: Number(userRow?.totalUsers || 0),
-            activeSessions: Number(userRow?.activeUsers || 0),
-            roleCounts: {
-              admin: Number(userRow?.adminCount || 0),
-              manager: Number(userRow?.managerCount || 0),
-              cashier: Number(userRow?.cashierCount || 0),
-            },
-          });
-        });
-      });
+    res.json({
+      todayRevenue: Number(revenueRow?.todayRevenue || 0),
+      flaggedTransactions: Number(flagRow?.flaggedTransactions || 0),
+      lowStockItems: Number(stockRow?.lowStockItems || 0),
+      totalUsers: Number(userRow?.totalUsers || 0),
+      activeSessions: Number(userRow?.activeUsers || 0),
+      roleCounts: {
+        admin: Number(userRow?.adminCount || 0),
+        manager: Number(userRow?.managerCount || 0),
+        cashier: Number(userRow?.cashierCount || 0),
+      },
     });
-  });
+  } catch (error) {
+    console.error('Failed to load summary:', error.message);
+    return res.status(500).json({ error: 'Unable to load summary' });
+  }
 });
 
 app.get('/api/auth/users', async (req, res) => {
@@ -554,13 +374,13 @@ app.get('/api/auth/users', async (req, res) => {
     }
   }
 
-  db.all('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users ORDER BY id ASC', [], (err, rows) => {
-    if (err) {
-      console.error('Failed to load users:', err.message);
-      return res.status(500).json({ error: 'Unable to load users' });
-    }
+  try {
+    const rows = await db.all('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users ORDER BY id ASC');
     res.json(rows);
-  });
+  } catch (error) {
+    console.error('Failed to load users:', error.message);
+    return res.status(500).json({ error: 'Unable to load users' });
+  }
 });
 
 app.get('/api/auth/users/:id', checkAuth, async (req, res) => {
@@ -594,16 +414,16 @@ app.get('/api/auth/users/:id', checkAuth, async (req, res) => {
     }
   }
 
-  db.get('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users WHERE id = ?', [req.params.id], (err, row) => {
-    if (err) {
-      console.error('Failed to load user:', err.message);
-      return res.status(500).json({ error: 'Unable to load user' });
-    }
+  try {
+    const row = await db.get('SELECT id, full_name AS fullName, email, username, role, status, created_at AS createdAt FROM users WHERE id = ?', [req.params.id]);
     if (!row) {
       return res.status(404).json({ error: 'User not found.' });
     }
     res.json(row);
-  });
+  } catch (error) {
+    console.error('Failed to load user:', error.message);
+    return res.status(500).json({ error: 'Unable to load user' });
+  }
 });
 
 app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
@@ -687,16 +507,16 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
   }
 
   values.push(id);
-  db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values, function (err) {
-    if (err) {
-      console.error('Failed to update user:', err.message);
-      return res.status(500).json({ error: 'Unable to update user.' });
-    }
-    if (this.changes === 0) {
+  try {
+    const result = await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
     res.json({ success: true, id });
-  });
+  } catch (error) {
+    console.error('Failed to update user:', error.message);
+    return res.status(500).json({ error: 'Unable to update user.' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -733,28 +553,27 @@ app.post('/api/auth/login', async (req, res) => {
     }
   }
 
-  db.get(
-    'SELECT id, full_name AS fullName, email, username, role, password FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?',
-    [identifier.toLowerCase(), identifier.toLowerCase()],
-    (err, user) => {
-      if (err) {
-        console.error('Login query failed:', err.message);
-        return res.status(500).json({ error: 'Unable to authenticate.' });
-      }
+  try {
+    const user = await db.get(
+      'SELECT id, full_name AS fullName, email, username, role, password FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?',
+      [identifier.toLowerCase(), identifier.toLowerCase()]
+    );
 
-      if (!user || user.password !== password) {
-        return res.status(401).json({ error: 'Invalid credentials.' });
-      }
-
-      res.json({
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        username: user.username,
-        role: normalizeRoleValue(user.role, 'cashier'),
-      });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
     }
-  );
+
+    res.json({
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      username: user.username,
+      role: normalizeRoleValue(user.role, 'cashier'),
+    });
+  } catch (error) {
+    console.error('Login query failed:', error.message);
+    return res.status(500).json({ error: 'Unable to authenticate.' });
+  }
 });
 
 app.post('/api/auth/register', async (req, res) => {
@@ -797,27 +616,26 @@ app.post('/api/auth/register', async (req, res) => {
     }
   }
 
-  db.run(
-    'INSERT INTO users (full_name, email, username, password, role) VALUES (?, ?, ?, ?, ?)',
-    [fullName, email, username, password, role],
-    function (err) {
-      if (err) {
-        if (err.message.includes('UNIQUE')) {
-          return res.status(409).json({ error: 'That email or username already exists.' });
-        }
-        console.error('Registration failed:', err.message);
-        return res.status(500).json({ error: 'Unable to create account.' });
-      }
+  try {
+    const result = await db.run(
+      'INSERT INTO users (full_name, email, username, password, role) VALUES (?, ?, ?, ?, ?)',
+      [fullName, email, username, password, role]
+    );
 
-      res.status(201).json({
-        id: this.lastID,
-        fullName,
-        email,
-        username,
-        role,
-      });
+    res.status(201).json({
+      id: result.insertId,
+      fullName,
+      email,
+      username,
+      role,
+    });
+  } catch (error) {
+    if (error.message.includes('Duplicate') || error.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'That email or username already exists.' });
     }
-  );
+    console.error('Registration failed:', error.message);
+    return res.status(500).json({ error: 'Unable to create account.' });
+  }
 });
 
 function handleProductsRequest(req, res) {
@@ -890,13 +708,12 @@ function handleProductsRequest(req, res) {
     return;
   }
 
-  db.all(sql, params, (err, rows) => {
-    if (err) {
+  db.all(sql, params)
+    .then((rows) => res.json(rows))
+    .catch((err) => {
       console.error('Product query failed:', err.message);
       return res.status(500).json({ error: 'Unable to load products' });
-    }
-    res.json(rows);
-  });
+    });
 }
 
 function createProduct(req, res) {
@@ -916,18 +733,16 @@ function createProduct(req, res) {
 
   db.run(
     'INSERT INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    product,
-    function (err) {
-      if (err) {
-        console.error('Insert product failed:', err.message);
-        if (err.code === 'SQLITE_CONSTRAINT') {
-          return res.status(409).json({ error: 'A product with this SKU or barcode already exists. Please choose a different value.' });
-        }
-        return res.status(500).json({ error: 'Unable to save product.' });
-      }
-      res.json({ id, name: normalizedName, sku: normalizedSku, barcode: normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, category: normalizedCategory, price: Number(price) || 0, stock: Number(stock) || 0, image: image || '/images/placeholder.svg', description: description || '', cost: Number(cost) || 0, threshold: Number(threshold) || 0 });
+    product
+  ).then(() => {
+    res.json({ id, name: normalizedName, sku: normalizedSku, barcode: normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, category: normalizedCategory, price: Number(price) || 0, stock: Number(stock) || 0, image: image || '/images/placeholder.svg', description: description || '', cost: Number(cost) || 0, threshold: Number(threshold) || 0 });
+  }).catch((err) => {
+    console.error('Insert product failed:', err.message);
+    if (err.message.includes('Duplicate') || err.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'A product with this SKU or barcode already exists. Please choose a different value.' });
     }
-  );
+    return res.status(500).json({ error: 'Unable to save product.' });
+  });
 }
 
 function handleProductsCollectionRoute(req, res) {
@@ -949,7 +764,7 @@ function handleProductsCollectionRoute(req, res) {
 app.all('/api/products', handleProductsCollectionRoute);
 app.all('/products', handleProductsCollectionRoute);
 
-app.put('/api/products/:id', checkAuth, (req, res) => {
+app.put('/api/products/:id', checkAuth, async (req, res) => {
   const id = req.params.id;
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
 
@@ -957,37 +772,36 @@ app.put('/api/products/:id', checkAuth, (req, res) => {
     return res.status(400).json({ error: 'Name, SKU, barcode, and category are required.' });
   }
 
-  db.run(
-    'UPDATE products SET name = ?, sku = ?, barcode = ?, category = ?, price = ?, stock = ?, image = ?, description = ?, cost = ?, threshold = ? WHERE id = ?',
-    [name, sku, barcode, category, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0, id],
-    function (err) {
-      if (err) {
-        console.error('Update product failed:', err.message);
-        return res.status(500).json({ error: 'Unable to update product.' });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Product not found.' });
-      }
-      res.json({ id, ...req.body });
+  try {
+    const result = await db.run(
+      'UPDATE products SET name = ?, sku = ?, barcode = ?, category = ?, price = ?, stock = ?, image = ?, description = ?, cost = ?, threshold = ? WHERE id = ?',
+      [name, sku, barcode, category, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found.' });
     }
-  );
+    res.json({ id, ...req.body });
+  } catch (error) {
+    console.error('Update product failed:', error.message);
+    return res.status(500).json({ error: 'Unable to update product.' });
+  }
 });
 
-app.delete('/api/products/:id', checkAuth, (req, res) => {
+app.delete('/api/products/:id', checkAuth, async (req, res) => {
   const id = req.params.id;
-  db.run('DELETE FROM products WHERE id = ?', [id], function (err) {
-    if (err) {
-      console.error('Delete product failed:', err.message);
-      return res.status(500).json({ error: 'Unable to delete product.' });
-    }
-    if (this.changes === 0) {
+  try {
+    const result = await db.run('DELETE FROM products WHERE id = ?', [id]);
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Product not found.' });
     }
     res.json({ success: true });
-  });
+  } catch (error) {
+    console.error('Delete product failed:', error.message);
+    return res.status(500).json({ error: 'Unable to delete product.' });
+  }
 });
 
-app.post('/api/checkout', checkAuth, (req, res) => {
+app.post('/api/checkout', checkAuth, async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   const paymentMethod = String(req.body.paymentMethod || 'Unknown');
   const discountPercent = Number(req.body.discountPercent || 0);
@@ -1001,68 +815,43 @@ app.post('/api/checkout', checkAuth, (req, res) => {
   const tax = Number(((subtotal - discount) * 0.08).toFixed(2));
   const total = Number((subtotal - discount + tax).toFixed(2));
 
-  db.run(
-    'INSERT INTO transactions (payment_method, subtotal, discount, tax, total) VALUES (?, ?, ?, ?, ?)',
-    [paymentMethod, subtotal, discount, tax, total],
-    function (err) {
-      if (err) {
-        console.error('Checkout insert failed:', err.message);
-        return res.status(500).json({ error: 'Unable to save transaction' });
-      }
+  try {
+    const transactionResult = await db.run(
+      'INSERT INTO transactions (payment_method, subtotal, discount, tax, total) VALUES (?, ?, ?, ?, ?)',
+      [paymentMethod, subtotal, discount, tax, total]
+    );
 
-      const transactionId = this.lastID;
-      const insertItem = db.prepare(
-        'INSERT INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    const transactionId = transactionResult.insertId;
+
+    for (const item of items) {
+      await db.run(
+        'INSERT INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [transactionId, item.productId, item.name, item.sku, item.unitPrice, item.quantity, Number((item.unitPrice * item.quantity).toFixed(2))]
       );
-
-      items.forEach((item) => {
-        insertItem.run(
-          transactionId,
-          item.productId,
-          item.name,
-          item.sku,
-          item.unitPrice,
-          item.quantity,
-          Number((item.unitPrice * item.quantity).toFixed(2))
-        );
-      });
-
-      insertItem.finalize((err2) => {
-        if (err2) {
-          console.error('Checkout items insert failed:', err2.message);
-          return res.status(500).json({ error: 'Unable to save transaction items' });
-        }
-
-        // Decrement stock for each item sold
-        items.forEach((item) => {
-          db.run(
-            'UPDATE products SET stock = stock - ? WHERE id = ?',
-            [item.quantity, item.productId],
-            (stockErr) => {
-              if (stockErr) {
-                console.error(`Failed to update stock for product ${item.productId}:`, stockErr.message);
-              }
-            }
-          );
-        });
-
-        res.json({ transactionId, total, subtotal, discount, tax });
-      });
     }
-  );
+
+    for (const item of items) {
+      await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.productId]);
+    }
+
+    res.json({ transactionId, total, subtotal, discount, tax });
+  } catch (error) {
+    console.error('Checkout insert failed:', error.message);
+    return res.status(500).json({ error: 'Unable to save transaction' });
+  }
 });
 
-app.get('/api/transactions', (req, res) => {
-  db.all(`SELECT t.id, t.created_at, t.payment_method, t.subtotal, t.discount, t.tax, t.total,
-      (SELECT COUNT(*) FROM transaction_items WHERE transaction_id = t.id) AS item_count
-    FROM transactions t
-    ORDER BY t.created_at DESC LIMIT 20`, [], (err, rows) => {
-    if (err) {
-      console.error('Failed to load transactions:', err.message);
-      return res.status(500).json({ error: 'Unable to load transactions' });
-    }
+app.get('/api/transactions', async (req, res) => {
+  try {
+    const rows = await db.all(`SELECT t.id, t.created_at, t.payment_method, t.subtotal, t.discount, t.tax, t.total,
+        (SELECT COUNT(*) FROM transaction_items WHERE transaction_id = t.id) AS item_count
+      FROM transactions t
+      ORDER BY t.created_at DESC LIMIT 20`);
     res.json(rows);
-  });
+  } catch (error) {
+    console.error('Failed to load transactions:', error.message);
+    return res.status(500).json({ error: 'Unable to load transactions' });
+  }
 });
 
 server.listen(PORT, () => {
