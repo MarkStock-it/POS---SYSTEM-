@@ -1,6 +1,26 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+const fs = require('fs');
+
+// Load .env from the project root (one level up from home-page/)
+const envPath = path.resolve(__dirname, '..', '.env');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+  console.log('[DB] Loaded .env from:', envPath);
+} else {
+  console.warn('[DB] WARNING: .env file NOT FOUND at:', envPath);
+  console.warn('[DB] Using hardcoded fallback credentials — check DB_HOST/DB_USER/DB_NAME');
+}
+
+// DEBUG: Log which database we're connecting to
+console.log('[DB] Connecting to:', {
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 's25103705_Ely',
+  database: process.env.DB_NAME || 's25103705_Ely',
+  envFile: envPath,
+  envExists: fs.existsSync(envPath),
+});
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -65,14 +85,40 @@ const db = {
       params = [];
     }
 
+    const isWrite = /^\s*(INSERT|UPDATE|DELETE|REPLACE|TRUNCATE)\b/i.test(sql);
+    if (isWrite) {
+      console.log('[DB-WRITE] SQL:', sql);
+      console.log('[DB-WRITE] Params:', JSON.stringify(effectiveParams));
+    }
+
     if (typeof callback === 'function') {
       pool.execute(sql, effectiveParams)
-        .then(([result]) => callback.call(createResultEnvelope(result), null))
-        .catch((error) => callback.call({}, error));
+        .then(([result]) => {
+          if (isWrite) {
+            console.log('[DB-WRITE] Result:', JSON.stringify(createResultEnvelope(result)));
+          }
+          callback.call(createResultEnvelope(result), null);
+        })
+        .catch((error) => {
+          if (isWrite) {
+            console.error('[DB-WRITE] ERROR:', error.message);
+          }
+          callback.call({}, error);
+        });
       return null;
     }
 
-    return pool.execute(sql, effectiveParams).then(([result]) => createResultEnvelope(result));
+    return pool.execute(sql, effectiveParams).then(([result]) => {
+      if (isWrite) {
+        console.log('[DB-WRITE] Result:', JSON.stringify(createResultEnvelope(result)));
+      }
+      return createResultEnvelope(result);
+    }).catch((error) => {
+      if (isWrite) {
+        console.error('[DB-WRITE] ERROR:', error.message);
+      }
+      throw error;
+    });
   },
   prepare(sql) {
     const queue = [];
@@ -123,9 +169,26 @@ const db = {
 async function initDatabase() {
   try {
     await pool.query('SELECT 1');
+    console.log('[DB] Connection test: OK');
   } catch (error) {
     console.error('MySQL connection failed:', error.message);
     throw error;
+  }
+
+  // DEBUG: Log all tables that currently exist in the database
+  try {
+    const [tables] = await pool.query('SHOW TABLES');
+    const tableNames = tables.map((t) => Object.values(t)[0]);
+    console.log('[DB] Existing tables:', tableNames.join(', '));
+
+    // Check if the flat tables (used by Node.js routes) exist
+    const requiredTables = ['users', 'products', 'transactions', 'transaction_items'];
+    for (const table of requiredTables) {
+      const [rows] = await pool.query(`SELECT COUNT(*) AS cnt FROM \`${table}\``);
+      console.log(`[DB] Table "${table}" has ${rows[0].cnt} rows`);
+    }
+  } catch (error) {
+    console.warn('[DB] Could not list tables:', error.message);
   }
 
   const schemaStatements = [

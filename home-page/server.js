@@ -297,6 +297,12 @@ async function initializeDatabase() {
 
 initializeDatabase();
 
+// Log which database mode is active at startup
+console.log(`[SERVER] MongoDB enabled: ${MONGO_ENABLED}`);
+console.log(`[SERVER] MySQL host: ${process.env.DB_HOST || 'localhost'}`);
+console.log(`[SERVER] MySQL database: ${process.env.DB_NAME || 's25103705_Ely'}`);
+console.log(`[SERVER] PHP bridge root: ${PHP_TEST_ROOT}`);
+
 app.use(phpCliMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -620,13 +626,15 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
 
   values.push(id);
   try {
+    console.log('[USER-UPDATE] SQL:', `UPDATE users SET ${updates.join(', ')} WHERE id = ?`, 'Values:', JSON.stringify(values));
     const result = await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+    console.log('[USER-UPDATE] Result:', JSON.stringify(result));
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
     res.json({ success: true, id });
   } catch (error) {
-    console.error('Failed to update user:', error.message);
+    console.error('[USER-UPDATE] Failed:', error.message);
     return res.status(500).json({ error: 'Unable to update user.' });
   }
 });
@@ -634,6 +642,8 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const identifier = String(req.body.identifier || '').trim();
   const password = String(req.body.password || '');
+
+  console.log('[LOGIN] Attempt for identifier:', identifier);
 
   if (!identifier || !password) {
     return res.status(400).json({ error: 'Identifier and password are required.' });
@@ -652,6 +662,7 @@ app.post('/api/auth/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials.' });
       }
 
+      console.log('[LOGIN] MongoDB user found:', user.email, 'role:', user.role);
       return res.json({
         id: user._id.toString(),
         fullName: user.fullName,
@@ -666,15 +677,23 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
+    console.log('[LOGIN] Querying users table for:', identifier.toLowerCase());
     const user = await db.get(
       'SELECT id, full_name AS fullName, email, username, role, password FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?',
       [identifier.toLowerCase(), identifier.toLowerCase()]
     );
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      console.log('[LOGIN] No user found for:', identifier);
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    if (user.password !== password) {
+      console.log('[LOGIN] Password mismatch for:', identifier);
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    console.log('[LOGIN] Success for:', user.email, 'role:', user.role);
     res.json({
       id: user.id,
       fullName: user.fullName,
@@ -683,7 +702,7 @@ app.post('/api/auth/login', async (req, res) => {
       role: normalizeRoleValue(user.role, 'cashier'),
     });
   } catch (error) {
-    console.error('Login query failed:', error.message);
+    console.error('[LOGIN] Query failed:', error.message);
     return res.status(500).json({ error: 'Unable to authenticate.' });
   }
 });
@@ -694,6 +713,8 @@ app.post('/api/auth/register', async (req, res) => {
   const username = String(req.body.username || email.split('@')[0] || '').trim();
   const password = String(req.body.password || '');
   const role = normalizeRoleValue(req.body.role, 'cashier');
+
+  console.log('[REGISTER] Incoming registration:', { fullName, email, username, role });
 
   if (!fullName || !email || !password) {
     return res.status(400).json({ error: 'Full name, email, and password are required.' });
@@ -715,6 +736,7 @@ app.post('/api/auth/register', async (req, res) => {
         createdAt: new Date()
       });
 
+      console.log('[REGISTER] MongoDB insert result:', result.insertedId.toString());
       return res.status(201).json({
         id: result.insertedId.toString(),
         fullName,
@@ -729,10 +751,17 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   try {
+    console.log('[REGISTER] Executing INSERT into users table:', { fullName, email, username, role });
     const result = await db.run(
       'INSERT INTO users (full_name, email, username, password, role) VALUES (?, ?, ?, ?, ?)',
       [fullName, email, username, password, role]
     );
+    console.log('[REGISTER] INSERT result:', JSON.stringify(result));
+
+    if (!result || result.affectedRows === 0) {
+      console.error('[REGISTER] CRITICAL: INSERT returned 0 affectedRows');
+      return res.status(500).json({ error: 'Account creation failed — database did not insert row' });
+    }
 
     res.status(201).json({
       id: result.insertId,
@@ -745,7 +774,8 @@ app.post('/api/auth/register', async (req, res) => {
     if (error.message.includes('Duplicate') || error.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'That email or username already exists.' });
     }
-    console.error('Registration failed:', error.message);
+    console.error('[REGISTER] Registration failed:', error.message);
+    console.error('[REGISTER] Stack:', error.stack);
     return res.status(500).json({ error: 'Unable to create account.' });
   }
 });
@@ -836,6 +866,8 @@ function createProduct(req, res) {
   const normalizedBarcode = String(barcode || normalizedSku || '').trim();
   const normalizedCategory = String(category || '').trim();
 
+  console.log('[PRODUCT-CREATE] Incoming:', { normalizedName, normalizedSku, normalizedCategory, price, stock });
+
   if (!normalizedName || !normalizedSku || !normalizedCategory) {
     return res.status(400).json({ error: 'Name, SKU, and category are required.' });
   }
@@ -846,10 +878,16 @@ function createProduct(req, res) {
   db.run(
     'INSERT INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     product
-  ).then(() => {
+  ).then((result) => {
+    console.log('[PRODUCT-CREATE] Insert result:', JSON.stringify(result));
+    if (!result || result.affectedRows === 0) {
+      console.error('[PRODUCT-CREATE] CRITICAL: INSERT returned 0 affectedRows');
+      return res.status(500).json({ error: 'Product creation failed — database did not insert row' });
+    }
     res.json({ id, name: normalizedName, sku: normalizedSku, barcode: normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, category: normalizedCategory, price: Number(price) || 0, stock: Number(stock) || 0, image: image || '/images/placeholder.svg', description: description || '', cost: Number(cost) || 0, threshold: Number(threshold) || 0 });
   }).catch((err) => {
-    console.error('Insert product failed:', err.message);
+    console.error('[PRODUCT-CREATE] Insert failed:', err.message);
+    console.error('[PRODUCT-CREATE] Stack:', err.stack);
     if (err.message.includes('Duplicate') || err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'A product with this SKU or barcode already exists. Please choose a different value.' });
     }
@@ -880,6 +918,8 @@ app.put('/api/products/:id', checkAuth, async (req, res) => {
   const id = req.params.id;
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
 
+  console.log('[PRODUCT-UPDATE] Updating product:', id, { name, sku, barcode, category, price, stock });
+
   if (!name || !sku || !barcode || !category) {
     return res.status(400).json({ error: 'Name, SKU, barcode, and category are required.' });
   }
@@ -889,26 +929,29 @@ app.put('/api/products/:id', checkAuth, async (req, res) => {
       'UPDATE products SET name = ?, sku = ?, barcode = ?, category = ?, price = ?, stock = ?, image = ?, description = ?, cost = ?, threshold = ? WHERE id = ?',
       [name, sku, barcode, category, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0, id]
     );
+    console.log('[PRODUCT-UPDATE] Result:', JSON.stringify(result));
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Product not found.' });
     }
     res.json({ id, ...req.body });
   } catch (error) {
-    console.error('Update product failed:', error.message);
+    console.error('[PRODUCT-UPDATE] Failed:', error.message);
     return res.status(500).json({ error: 'Unable to update product.' });
   }
 });
 
 app.delete('/api/products/:id', checkAuth, async (req, res) => {
   const id = req.params.id;
+  console.log('[PRODUCT-DELETE] Deleting product:', id);
   try {
     const result = await db.run('DELETE FROM products WHERE id = ?', [id]);
+    console.log('[PRODUCT-DELETE] Result:', JSON.stringify(result));
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Product not found.' });
     }
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete product failed:', error.message);
+    console.error('[PRODUCT-DELETE] Failed:', error.message);
     return res.status(500).json({ error: 'Unable to delete product.' });
   }
 });
@@ -917,6 +960,8 @@ app.post('/api/checkout', checkAuth, async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   const paymentMethod = String(req.body.paymentMethod || 'Unknown');
   const discountPercent = Number(req.body.discountPercent || 0);
+
+  console.log('[CHECKOUT] Incoming request:', JSON.stringify({ paymentMethod, discountPercent, itemCount: items.length }));
 
   if (!items.length) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -928,27 +973,41 @@ app.post('/api/checkout', checkAuth, async (req, res) => {
   const total = Number((subtotal - discount + tax).toFixed(2));
 
   try {
+    console.log('[CHECKOUT] Inserting transaction:', { paymentMethod, subtotal, discount, tax, total });
     const transactionResult = await db.run(
       'INSERT INTO transactions (payment_method, subtotal, discount, tax, total) VALUES (?, ?, ?, ?, ?)',
       [paymentMethod, subtotal, discount, tax, total]
     );
+    console.log('[CHECKOUT] Transaction insert result:', JSON.stringify(transactionResult));
+
+    if (!transactionResult || transactionResult.affectedRows === 0) {
+      console.error('[CHECKOUT] CRITICAL: Transaction insert returned 0 affectedRows');
+      return res.status(500).json({ error: 'Transaction insert failed — 0 rows affected' });
+    }
 
     const transactionId = transactionResult.insertId;
+    console.log('[CHECKOUT] Transaction ID:', transactionId);
 
     for (const item of items) {
-      await db.run(
+      console.log('[CHECKOUT] Inserting transaction_item:', { transactionId, productId: item.productId, name: item.name, sku: item.sku, unitPrice: item.unitPrice, quantity: item.quantity });
+      const itemResult = await db.run(
         'INSERT INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [transactionId, item.productId, item.name, item.sku, item.unitPrice, item.quantity, Number((item.unitPrice * item.quantity).toFixed(2))]
       );
+      console.log('[CHECKOUT] Transaction_item insert result:', JSON.stringify(itemResult));
     }
 
     for (const item of items) {
-      await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.productId]);
+      console.log('[CHECKOUT] Updating stock for product:', item.productId, 'quantity:', item.quantity);
+      const stockResult = await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.productId]);
+      console.log('[CHECKOUT] Stock update result:', JSON.stringify(stockResult));
     }
 
+    console.log('[CHECKOUT] Checkout complete. Transaction ID:', transactionId);
     res.json({ transactionId, total, subtotal, discount, tax });
   } catch (error) {
-    console.error('Checkout insert failed:', error.message);
+    console.error('[CHECKOUT] Checkout insert failed:', error.message);
+    console.error('[CHECKOUT] Stack:', error.stack);
     return res.status(500).json({ error: 'Unable to save transaction' });
   }
 });
