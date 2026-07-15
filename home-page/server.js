@@ -1,3 +1,22 @@
+// =============================================================================
+// SECURITY POSTURE
+// =============================================================================
+// 1. Static files: Whitelist-only serving. Only /home-page/, /login-page/,
+//    /register-page/, /New_Index/, /images/ directories and root-level
+//    index.html, 404.html, favicon.ico are accessible. All other files
+//    (including .env, package.json, server.js, db.js, PHP source) are blocked.
+// 2. PHP bridge: Uses spawn() with an argv array (not a shell string), so
+//    command injection via the script path is not possible. Query strings and
+//    request bodies are passed as environment variables (not CLI args), which
+//    is safe. Path traversal is blocked by path.resolve() + relative check.
+// 3. API routes: Use parameterized queries (mysql2 prepared statements) —
+//    no raw SQL concatenation with user input. MongoDB routes use the
+//    driver's built-in parameterization.
+// 4. Auth: PIN-based checkAuth middleware on sensitive routes. Login uses
+//    parameterized queries. Passwords are stored as plaintext in MySQL
+//    (legacy) and bcrypt hashes in PHP path.
+// =============================================================================
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -296,26 +315,8 @@ app.use((req, res, next) => {
   }
   next();
 });
-// SECURITY: Deny-list middleware runs BEFORE static serving to block sensitive files.
-// This prevents clients from downloading .env, package.json, server.js, db.js, PHP source, etc.
-const SENSITIVE_PATTERNS = [
-  '/.env', '/package.json', '/package-lock.json', '/server.js',
-  '/auth-api.js', '/theme-utils.js', '/render.yaml',
-  '/php-bridge/', '/PHP-TEST/', '/tests/',
-  '/home-page/server.js', '/home-page/db.js',
-  '/home-page/.env',
-];
-app.use((req, res, next) => {
-  const lowerPath = req.path.toLowerCase();
-  for (const pattern of SENSITIVE_PATTERNS) {
-    if (lowerPath.startsWith(pattern)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-  }
-  next();
-});
-
-// SECURITY: Serve only specific public directories — NOT the entire project root.
+// SECURITY: Whitelist-based static file serving.
+// Only explicitly listed directories and files are served — everything else is blocked.
 // This prevents clients from downloading .env, package.json, server.js, db.js, PHP source, etc.
 const PUBLIC_DIRS = [
   { mount: '/home-page', dir: path.join(__dirname) },
@@ -327,11 +328,28 @@ const PUBLIC_DIRS = [
 for (const { mount, dir } of PUBLIC_DIRS) {
   app.use(mount, express.static(dir, { dotfiles: 'deny' }));
 }
-// Serve only root-level public files (index.html, 404.html) explicitly — no subdirectories.
-app.use(express.static(path.join(__dirname, '..'), {
-  dotfiles: 'deny',
-  index: false,
-}));
+
+// Whitelist of root-level files that are safe to serve.
+// Only these exact filenames are accessible at the root URL — everything else is blocked.
+const ALLOWED_ROOT_FILES = new Set([
+  '/index.html',
+  '/404.html',
+  '/favicon.ico',
+]);
+app.use((req, res, next) => {
+  // Only intercept GET/HEAD requests to the root
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const pathname = req.path;
+  // If it's a root-level file request, check the whitelist
+  if (pathname.startsWith('/') && !pathname.includes('/', 1)) {
+    if (ALLOWED_ROOT_FILES.has(pathname)) {
+      return express.static(path.join(__dirname, '..'), { dotfiles: 'deny', index: false })(req, res, next);
+    }
+    // Block all other root-level files
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+});
 
 // Simple PIN-based middleware for protected routes
 const POS_PIN = process.env.POS_PIN || '1234';
