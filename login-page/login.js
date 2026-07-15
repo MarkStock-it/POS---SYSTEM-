@@ -162,6 +162,31 @@ function setCurrentUser(user) {
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  // --- TEMP MANAGER BYPASS ---
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    if (email === "venmanager@pos.com" && password === "123123") {
+        // 1. Save dummy session details to localStorage
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userRole", "Manager");
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userName", "Manager Account");
+
+        // 2. Show the success notification if your UI uses one
+        if (successModal) {
+            successModal.style.display = "block";
+        }
+
+        // 3. Redirect to your manager landing page
+        // Adjust the path below to point to your main manager view/dashboard!
+        setTimeout(() => {
+            window.location.href = "../home-page/index.html"; 
+        }, 1000); 
+
+        return; // Stop the rest of the login function from running
+    }
+
   const identifier = emailInput.value.trim();
   const password = passwordInput.value;
 
