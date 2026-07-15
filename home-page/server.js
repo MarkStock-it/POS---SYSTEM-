@@ -296,37 +296,14 @@ app.use((req, res, next) => {
   }
   next();
 });
-// SECURITY: Serve only specific public directories instead of the entire project root.
+// SECURITY: Deny-list middleware runs BEFORE static serving to block sensitive files.
 // This prevents clients from downloading .env, package.json, server.js, db.js, PHP source, etc.
-const PUBLIC_DIRS = [
-  { mount: '/home-page', dir: path.join(__dirname) },
-  { mount: '/login-page', dir: path.join(__dirname, '..', 'login-page') },
-  { mount: '/register-page', dir: path.join(__dirname, '..', 'register-page') },
-  { mount: '/New_Index', dir: path.join(__dirname, '..', 'New_Index') },
-  { mount: '/images', dir: path.join(__dirname, '..', 'images') },
-];
-for (const { mount, dir } of PUBLIC_DIRS) {
-  app.use(mount, express.static(dir));
-}
-// Also serve root-level public files (index.html, 404.html) explicitly
-app.use(express.static(path.join(__dirname, '..'), {
-  dotfiles: 'deny',
-  index: false,
-  setHeaders(res, filePath) {
-    // Block sensitive file types at the response level
-    const ext = path.extname(filePath).toLowerCase();
-    if (['.env', '.json', '.js', '.yaml', '.yml', '.md', '.lock'].includes(ext)) {
-      if (filePath.includes('package-lock') || filePath.includes('package.json') || filePath.includes('.env')) {
-        return res.status(403).end('Forbidden');
-      }
-    }
-  }
-}));
-// Deny-list: explicitly block known sensitive files at the route level
 const SENSITIVE_PATTERNS = [
   '/.env', '/package.json', '/package-lock.json', '/server.js',
   '/auth-api.js', '/theme-utils.js', '/render.yaml',
   '/php-bridge/', '/PHP-TEST/', '/tests/',
+  '/home-page/server.js', '/home-page/db.js',
+  '/home-page/.env',
 ];
 app.use((req, res, next) => {
   const lowerPath = req.path.toLowerCase();
@@ -337,6 +314,24 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// SECURITY: Serve only specific public directories — NOT the entire project root.
+// This prevents clients from downloading .env, package.json, server.js, db.js, PHP source, etc.
+const PUBLIC_DIRS = [
+  { mount: '/home-page', dir: path.join(__dirname) },
+  { mount: '/login-page', dir: path.join(__dirname, '..', 'login-page') },
+  { mount: '/register-page', dir: path.join(__dirname, '..', 'register-page') },
+  { mount: '/New_Index', dir: path.join(__dirname, '..', 'New_Index') },
+  { mount: '/images', dir: path.join(__dirname, '..', 'images') },
+];
+for (const { mount, dir } of PUBLIC_DIRS) {
+  app.use(mount, express.static(dir, { dotfiles: 'deny' }));
+}
+// Serve only root-level public files (index.html, 404.html) explicitly — no subdirectories.
+app.use(express.static(path.join(__dirname, '..'), {
+  dotfiles: 'deny',
+  index: false,
+}));
 
 // Simple PIN-based middleware for protected routes
 const POS_PIN = process.env.POS_PIN || '1234';
