@@ -863,7 +863,8 @@ function saveProduct() {
     })(),
   };
 
-  const url = state.editingProductId ? `/api/products/${state.editingProductId}` : '/api/products';
+  // For new products, use the dual-write v2 endpoint
+  const url = state.editingProductId ? `/api/products/${state.editingProductId}` : '/api/products/v2';
   const method = state.editingProductId ? 'PUT' : 'POST';
 
   fetch(url, {
@@ -882,7 +883,27 @@ function saveProduct() {
     })
     .catch((error) => {
       console.error('Save failed:', error);
-      showToast(error.message || 'Unable to save product', 'danger');
+      // Fallback to original endpoint if v2 fails
+      if (!state.editingProductId) {
+        fetch('/api/products', {
+          method: 'POST',
+          headers: getApiHeaders(),
+          body: JSON.stringify(payload),
+        })
+          .then(parseJsonResponse)
+          .then((result) => {
+            if (result.error) throw new Error(result.error);
+            showToast('Product saved successfully');
+            closeProductModal();
+            loadProducts();
+          })
+          .catch((fallbackError) => {
+            console.error('Fallback save failed:', fallbackError);
+            showToast(fallbackError.message || 'Unable to save product', 'danger');
+          });
+      } else {
+        showToast(error.message || 'Unable to save product', 'danger');
+      }
     });
 }
 
@@ -934,7 +955,7 @@ function processPayment(paymentMethod) {
     })),
   };
 
-  fetch('/api/checkout', {
+  fetch('/api/checkout/v2', {
     method: 'POST',
     headers: getApiHeaders(),
     body: JSON.stringify(payload),
@@ -948,8 +969,22 @@ function processPayment(paymentMethod) {
       showToast(`Payment successful: ${paymentMethod}. Total ${formatCurrency(result.total)}`);
     })
     .catch((error) => {
-      console.error('Checkout failed:', error);
-      showToast(error.message || 'Payment failed', 'danger');
+      console.error('Checkout v2 failed, trying original:', error);
+      fetch('/api/checkout', {
+        method: 'POST',
+        headers: getApiHeaders(),
+        body: JSON.stringify(payload),
+      })
+        .then(parseJsonResponse)
+        .then((result) => {
+          if (result.error) throw new Error(result.error);
+          clearCart();
+          showToast(`Payment successful: ${paymentMethod}. Total ${formatCurrency(result.total)}`);
+        })
+        .catch((fallbackError) => {
+          console.error('Checkout failed:', fallbackError);
+          showToast(fallbackError.message || 'Payment failed', 'danger');
+        });
     });
 }
 

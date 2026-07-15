@@ -780,6 +780,72 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// =============================================================================
+// DUAL-WRITE: Write to both the flat (Node.js) tables AND the normalized
+// (PHP) tables so that data is visible regardless of which schema the user
+// checks. This is a temporary bridge until the app is unified to one schema.
+// =============================================================================
+app.post('/api/auth/register/v2', async (req, res) => {
+  const fullName = String(req.body.fullName || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const username = String(req.body.username || email.split('@')[0] || '').trim();
+  const password = String(req.body.password || '');
+  const role = normalizeRoleValue(req.body.role, 'cashier');
+
+  console.log('[REGISTER-V2] Incoming:', { fullName, email, username, role });
+
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: 'Full name, email, and password are required.' });
+  }
+
+  try {
+    // 1. Write to the flat `users` table (Node.js schema)
+    console.log('[REGISTER-V2] Writing to flat `users` table');
+    const flatResult = await db.run(
+      'INSERT INTO users (full_name, email, username, password, role) VALUES (?, ?, ?, ?, ?)',
+      [fullName, email, username, password, role]
+    );
+    console.log('[REGISTER-V2] Flat insert result:', JSON.stringify(flatResult));
+
+    // 2. Write to the normalized `user` table (PHP schema)
+    console.log('[REGISTER-V2] Writing to normalized `user` table');
+    const roleType = ['manager', 'admin', 'super_admin', 'super-admin'].includes(role)
+      ? (role === 'super-admin' ? 'super_admin' : role)
+      : 'cashier';
+
+    // Ensure role exists in the `role` table
+    await db.run('INSERT IGNORE INTO role (role_type) VALUES (?)', [roleType]);
+
+    // Look up the role_id
+    const roleRow = await db.get('SELECT role_id FROM role WHERE role_type = ?', [roleType]);
+    if (!roleRow) {
+      throw new Error(`Role "${roleType}" not found in role table`);
+    }
+
+    const hash = password; // plaintext for consistency with flat table (legacy)
+    await db.run(
+      'INSERT INTO `user` (full_name, password_hash, role_id, status, email, username) VALUES (?, ?, ?, \'active\', ?, ?)',
+      [fullName, hash, roleRow.role_id, email, username]
+    );
+    console.log('[REGISTER-V2] Normalized insert complete');
+
+    res.status(201).json({
+      id: flatResult.insertId,
+      fullName,
+      email,
+      username,
+      role,
+    });
+  } catch (error) {
+    if (error.message.includes('Duplicate') || error.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'That email or username already exists.' });
+    }
+    console.error('[REGISTER-V2] Failed:', error.message);
+    console.error('[REGISTER-V2] Stack:', error.stack);
+    return res.status(500).json({ error: 'Unable to create account.' });
+  }
+});
+
 function handleProductsRequest(req, res) {
   const search = String(req.query.search || '').trim();
   const category = String(req.query.category || 'all').trim().toLowerCase();
@@ -914,6 +980,80 @@ function handleProductsCollectionRoute(req, res) {
 app.all('/api/products', handleProductsCollectionRoute);
 app.all('/products', handleProductsCollectionRoute);
 
+// =============================================================================
+// DUAL-WRITE PRODUCT CREATE: Writes to both flat `products` and normalized
+// `product` + `stock` + `category` tables.
+// =============================================================================
+app.post('/api/products/v2', checkAuth, async (req, res) => {
+  const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
+
+  const normalizedName = String(name || '').trim();
+  const normalizedSku = String(sku || '').trim();
+  const normalizedBarcode = String(barcode || normalizedSku || '').trim();
+  const normalizedCategory = String(category || '').trim();
+
+  console.log('[PRODUCT-CREATE-V2] Incoming:', { normalizedName, normalizedSku, normalizedCategory, price, stock });
+
+  if (!normalizedName || !normalizedSku || !normalizedCategory) {
+    return res.status(400).json({ error: 'Name, SKU, and category are required.' });
+  }
+
+  try {
+    const id = Date.now().toString();
+
+    // 1. Write to flat `products` table
+    console.log('[PRODUCT-CREATE-V2] Writing to flat `products` table');
+    const flatResult = await db.run(
+      'INSERT INTO products (id, name, sku, barcode, category, price, stock, image, description, cost, threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, normalizedName, normalizedSku, normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`, normalizedCategory, Number(price) || 0, Number(stock) || 0, image || '/images/placeholder.svg', description || '', Number(cost) || 0, Number(threshold) || 0]
+    );
+    console.log('[PRODUCT-CREATE-V2] Flat insert result:', JSON.stringify(flatResult));
+
+    // 2. Write to normalized `product` + `category` + `stock` tables
+    console.log('[PRODUCT-CREATE-V2] Writing to normalized tables');
+
+    // Ensure category exists
+    await db.run('INSERT IGNORE INTO category (name, status) VALUES (?, \'active\')', [normalizedCategory]);
+    const catRow = await db.get('SELECT category_id FROM category WHERE name = ?', [normalizedCategory]);
+
+    // Insert product
+    const productCode = normalizedSku;
+    const restockThreshold = Number(threshold) || 5;
+    await db.run(
+      'INSERT INTO `product` (product_code, category_id, name, price, restock_threshold, status, image_path) VALUES (?, ?, ?, ?, ?, \'active\', ?)',
+      [productCode, catRow ? catRow.category_id : null, normalizedName, Number(price) || 0, restockThreshold, image || '/images/placeholder.svg']
+    );
+
+    // Insert stock
+    const prodRow = await db.get('SELECT product_id FROM `product` WHERE product_code = ?', [productCode]);
+    if (prodRow) {
+      await db.run('INSERT INTO `stock` (product_id, quantity) VALUES (?, ?)', [prodRow.product_id, Number(stock) || 0]);
+    }
+
+    console.log('[PRODUCT-CREATE-V2] Complete. ID:', id);
+    res.json({
+      id,
+      name: normalizedName,
+      sku: normalizedSku,
+      barcode: normalizedBarcode || `${normalizedSku}-${id.slice(-6)}`,
+      category: normalizedCategory,
+      price: Number(price) || 0,
+      stock: Number(stock) || 0,
+      image: image || '/images/placeholder.svg',
+      description: description || '',
+      cost: Number(cost) || 0,
+      threshold: Number(threshold) || 0,
+    });
+  } catch (error) {
+    console.error('[PRODUCT-CREATE-V2] Failed:', error.message);
+    console.error('[PRODUCT-CREATE-V2] Stack:', error.stack);
+    if (error.message.includes('Duplicate') || error.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'A product with this SKU or barcode already exists.' });
+    }
+    return res.status(500).json({ error: 'Unable to save product.' });
+  }
+});
+
 app.put('/api/products/:id', checkAuth, async (req, res) => {
   const id = req.params.id;
   const { name, sku, barcode, category, price, stock, image, description, cost, threshold } = req.body;
@@ -1022,6 +1162,89 @@ app.get('/api/transactions', async (req, res) => {
   } catch (error) {
     console.error('Failed to load transactions:', error.message);
     return res.status(500).json({ error: 'Unable to load transactions' });
+  }
+});
+
+// =============================================================================
+// DUAL-WRITE CHECKOUT: Writes to both flat (transactions/transaction_items)
+// and normalized (transaction/transaction_item/stock) tables.
+// =============================================================================
+app.post('/api/checkout/v2', checkAuth, async (req, res) => {
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const paymentMethod = String(req.body.paymentMethod || 'Unknown');
+  const discountPercent = Number(req.body.discountPercent || 0);
+
+  console.log('[CHECKOUT-V2] Incoming:', JSON.stringify({ paymentMethod, discountPercent, itemCount: items.length }));
+
+  if (!items.length) {
+    return res.status(400).json({ error: 'Cart is empty' });
+  }
+
+  const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const discount = Math.max(0, Math.min(discountPercent, 100)) * subtotal / 100;
+  const tax = Number(((subtotal - discount) * 0.08).toFixed(2));
+  const total = Number((subtotal - discount + tax).toFixed(2));
+
+  try {
+    // 1. Write to flat `transactions` table
+    console.log('[CHECKOUT-V2] Writing to flat `transactions` table');
+    const flatResult = await db.run(
+      'INSERT INTO transactions (payment_method, subtotal, discount, tax, total) VALUES (?, ?, ?, ?, ?)',
+      [paymentMethod, subtotal, discount, tax, total]
+    );
+    console.log('[CHECKOUT-V2] Flat insert result:', JSON.stringify(flatResult));
+    const flatTransactionId = flatResult.insertId;
+
+    // 2. Write to normalized `transaction` table
+    console.log('[CHECKOUT-V2] Writing to normalized `transaction` table');
+    const receiptNo = 'RCPT-' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 14) + '-' + Math.floor(1000 + Math.random() * 9000);
+    const normResult = await db.run(
+      'INSERT INTO `transaction` (receipt_no, payment_method, amount_tendered, transaction_status, subtotal, tax, total, change_amount) VALUES (?, ?, ?, \'completed\', ?, ?, ?, ?)',
+      [receiptNo, paymentMethod, total, subtotal, tax, total, 0]
+    );
+    console.log('[CHECKOUT-V2] Normalized insert result:', JSON.stringify(normResult));
+    const normTransactionId = normResult.insertId;
+
+    // 3. Write transaction_items to both schemas
+    for (const item of items) {
+      const lineTotal = Number((item.unitPrice * item.quantity).toFixed(2));
+
+      // Flat table
+      await db.run(
+        'INSERT INTO transaction_items (transaction_id, product_id, name, sku, unit_price, quantity, line_total) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [flatTransactionId, item.productId, item.name, item.sku, item.unitPrice, item.quantity, lineTotal]
+      );
+
+      // Normalized table — need stock_id from the `stock` table
+      // First, find or create a stock entry for this product
+      const productCode = item.sku || item.productId;
+      const productRow = await db.get('SELECT product_id FROM `product` WHERE product_code = ?', [productCode]);
+      if (productRow) {
+        let stockRow = await db.get('SELECT stock_id, quantity FROM `stock` WHERE product_id = ?', [productRow.product_id]);
+        if (!stockRow) {
+          await db.run('INSERT INTO `stock` (product_id, quantity) VALUES (?, 0)', [productRow.product_id]);
+          stockRow = await db.get('SELECT stock_id, quantity FROM `stock` WHERE product_id = ?', [productRow.product_id]);
+        }
+        if (stockRow) {
+          await db.run(
+            'INSERT INTO `transaction_item` (transaction_id, stock_id, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?)',
+            [normTransactionId, stockRow.stock_id, item.quantity, item.unitPrice, lineTotal]
+          );
+          // Decrement stock
+          await db.run('UPDATE `stock` SET quantity = quantity - ? WHERE stock_id = ?', [item.quantity, stockRow.stock_id]);
+        }
+      }
+
+      // Also decrement flat stock
+      await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.productId]);
+    }
+
+    console.log('[CHECKOUT-V2] Complete. Flat ID:', flatTransactionId, 'Norm ID:', normTransactionId);
+    res.json({ transactionId: flatTransactionId, total, subtotal, discount, tax });
+  } catch (error) {
+    console.error('[CHECKOUT-V2] Failed:', error.message);
+    console.error('[CHECKOUT-V2] Stack:', error.stack);
+    return res.status(500).json({ error: 'Unable to save transaction' });
   }
 });
 

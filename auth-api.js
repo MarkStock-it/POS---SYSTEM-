@@ -63,9 +63,16 @@ async function loginWithBackend(identifier, password) {
 }
 
 async function registerWithBackend({ fullName, email, username, password, role }) {
-  return makeApiRequest('/api/auth/register', {
+  // Try the dual-write v2 endpoint first (writes to both flat + normalized tables)
+  // Falls back to the original endpoint if v2 is not available
+  return makeApiRequest('/api/auth/register/v2', {
     method: 'POST',
     body: JSON.stringify({ fullName, email, username, password, role }),
+  }).catch(() => {
+    return makeApiRequest('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ fullName, email, username, password, role }),
+    });
   });
 }
 
