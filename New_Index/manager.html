@@ -3,165 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MarkStock-it | Manager</title>
+<title>Retail POS System | Manager</title>
+<link rel="stylesheet" href="../home-page/styles.css?v=2" />
 <style>
-  :root {
-    --bg-void: #0a0b0d;
-    --bg-panel: #111316;
-    --bg-panel-raised: #16191d;
-    --bg-hover: #1c2024;
-    --border-hairline: #24282e;
-    --text-primary: #eceef0;
-    --text-secondary: #8b9098;
-    --text-tertiary: #565b62;
-    --accent-green: #4caf7d;
-    --accent-green-dim: #1d3326;
-    --status-green: #4caf7d;
-    --status-red: #e0584f;
-    --status-amber: #d4a843;
-    --font-display: 'IBM Plex Mono', 'Courier New', monospace;
-    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
+  /* ==========================================================
+     Manager dashboard shell — sidebar + topbar layout.
+     Colors, radii, shadows, and fonts are pulled from the shared
+     home-page/styles.css tokens (--primary, --text, --muted, --card,
+     --glass-border, --radius*, --space*, --shadow*, --font-family)
+     so this page matches the cashier page's look, just with a
+     dashboard-style structure instead of the centered app-shell.
+     ========================================================== */
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  html, body { height: 100%; }
   body {
-    background: var(--bg-void);
-    color: var(--text-primary);
-    font-family: var(--font-body);
-    font-size: 14px;
-    line-height: 1.5;
-    min-height: 100vh;
     display: grid;
-    grid-template-columns: 220px 1fr;
-    grid-template-rows: 64px 1fr;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 72px 1fr;
     grid-template-areas:
       "sidebar topbar"
       "sidebar main";
-  }
-
-  /* ---------- TOP BAR ---------- */
-  .topbar {
-    grid-area: topbar;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border-hairline);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 28px;
-  }
-
-  .topbar-clearance {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .clearance-badge {
-    font-family: var(--font-display);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--bg-void);
-    background: var(--accent-green);
-    padding: 4px 10px;
-    border-radius: 2px;
-    font-weight: 700;
-  }
-
-  .topbar-breadcrumb {
-    color: var(--text-tertiary);
-    font-size: 13px;
-  }
-
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .session-info {
-    text-align: right;
-    line-height: 1.3;
-  }
-
-  .session-info .name {
-    font-size: 13px;
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-
-  .session-info .role {
-    font-size: 11px;
-    color: var(--accent-green);
-    letter-spacing: 0.04em;
-  }
-
-  .avatar-ring {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1.5px solid var(--accent-green);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-size: 12px;
-    color: var(--accent-green);
-    cursor: pointer;
+    overflow: hidden;
   }
 
   /* ---------- SIDEBAR ---------- */
   .sidebar {
     grid-area: sidebar;
-    background: var(--bg-panel);
-    border-right: 1px solid var(--border-hairline);
+    background: var(--card-strong);
+    border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
-    padding: 0 0 20px 0;
+    overflow-y: auto;
   }
 
   .brand {
-    height: 64px;
+    height: 72px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--border-hairline);
+    gap: 12px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
   }
 
   .brand-mark {
-    width: 28px;
-    height: 28px;
-    background: var(--accent-green);
-    border-radius: 4px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--bg-void);
-    font-family: var(--font-display);
+    background: linear-gradient(180deg, var(--primary), #1f4ed8);
+    color: #fff;
     font-weight: 800;
-    font-size: 13px;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    box-shadow: 0 6px 16px rgba(37,99,235,0.28);
+    flex-shrink: 0;
   }
 
   .brand-name {
-    font-family: var(--font-display);
-    font-size: 13px;
+    font-weight: 800;
+    font-size: 13.5px;
     letter-spacing: 0.06em;
-    color: var(--text-primary);
+    color: var(--text);
   }
 
-  .nav-section {
-    padding: 20px 12px 4px;
-  }
+  .nav-section { padding: 20px 12px 4px; }
 
   .nav-section-label {
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text-tertiary);
+    color: var(--muted);
     padding: 0 12px 8px;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .nav-item {
@@ -169,326 +85,246 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: 6px;
-    color: var(--text-secondary);
+    border-radius: 10px;
+    color: var(--muted);
     text-decoration: none;
     cursor: pointer;
     font-size: 13.5px;
+    font-weight: 600;
     margin-bottom: 2px;
     border-left: 2px solid transparent;
-    transition: background 0.12s ease, color 0.12s ease;
+    transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
   }
 
-  .nav-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
+  .nav-item:hover { background: rgba(37,99,235,0.06); color: var(--text); }
 
   .nav-item.active {
-    background: var(--bg-hover);
-    color: var(--accent-green);
-    border-left: 2px solid var(--accent-green);
+    background: rgba(37,99,235,0.1);
+    color: var(--primary);
+    border-left: 2px solid var(--primary);
   }
 
-  .nav-icon {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    opacity: 0.85;
-  }
+  .nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.9; text-align: center; }
 
   .nav-footer {
     margin-top: auto;
-    padding: 16px 24px 0;
-    border-top: 1px solid var(--border-hairline);
+    padding: 16px 22px 20px;
+    border-top: 1px solid var(--glass-border);
   }
 
   .nav-footer-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: var(--text-tertiary);
+    color: var(--muted);
     font-size: 12.5px;
+    font-weight: 600;
     padding: 8px 0;
     cursor: pointer;
+    transition: color var(--transition-fast) ease;
+  }
+  .nav-footer-item:hover { color: var(--danger); }
+
+  /* ---------- TOPBAR ---------- */
+  .topbar {
+    grid-area: topbar;
+    background: var(--card-strong);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
   }
 
-  .nav-footer-item:hover { color: var(--status-red); }
+  .topbar-clearance { display: flex; align-items: center; gap: 10px; }
+
+  .clearance-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(180deg, var(--primary), #1f4ed8);
+    padding: 4px 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+  }
+
+  .topbar-breadcrumb { color: var(--muted); font-size: 13px; }
+
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+
+  .icon-toggle {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+  }
+  .icon-toggle:hover { background: rgba(37,99,235,0.08); color: var(--primary); }
+
+  .session-info { text-align: right; line-height: 1.3; }
+  .session-info .name { font-size: 13px; color: var(--text); font-weight: 700; }
+  .session-info .role {
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .avatar-ring {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
 
   /* ---------- MAIN ---------- */
-  .main {
-    grid-area: main;
-    padding: 28px;
-    overflow-y: auto;
-  }
+  .main { grid-area: main; padding: 28px; overflow-y: auto; }
+
+  section[id] { scroll-margin-top: 12px; }
 
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    gap: var(--space-md);
     margin-bottom: 24px;
+    flex-wrap: wrap;
   }
+  .page-title { font-size: 1.4rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .page-subtitle { color: var(--muted); font-size: 0.9rem; }
 
-  .page-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-
-  .page-subtitle {
-    color: var(--text-secondary);
-    font-size: 13px;
-  }
-
-  .btn {
-    font-family: var(--font-body);
-    font-size: 13px;
-    font-weight: 600;
-    padding: 10px 18px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: opacity 0.12s ease;
-  }
-
-  .btn:hover { opacity: 0.88; }
-
-  .btn-green {
-    background: var(--accent-green);
-    color: var(--bg-void);
-  }
-
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border-hairline);
-    color: var(--text-secondary);
-  }
-
-  /* ---------- METRIC GRID ---------- */
-  .metric-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .metric-card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 18px 20px;
-  }
-
-  .metric-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: 10px;
-  }
-
-  .metric-value {
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 6px;
-  }
-
-  .metric-delta { font-size: 12px; }
-  .metric-delta.up { color: var(--status-green); }
-  .metric-delta.down { color: var(--status-red); }
-
-  /* ---------- PANEL / TABLE ---------- */
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    margin-bottom: 24px;
-    overflow: hidden;
-  }
-
-  .panel-header {
+  .section-heading {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-hairline);
+    align-items: flex-end;
+    margin: var(--space-lg) 0 var(--space-md);
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+  .section-heading h2 { margin: 0; font-size: 1.05rem; color: var(--text); }
+  .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 0.87rem; }
+
+  .lower-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: var(--space-lg);
+    align-items: start;
   }
 
-  .panel-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-primary);
+  /* metric cards: reuse dashboard-card but with a subtle lift, like the
+     product cards on the cashier page */
+  .dashboard-grid .dashboard-card {
+    transition: transform var(--transition-std) ease, box-shadow var(--transition-std) ease;
   }
-
-  .panel-title-sub {
-    font-size: 11.5px;
-    color: var(--text-tertiary);
-    margin-top: 2px;
-    font-weight: 400;
+  .dashboard-grid .dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--elevation-hover);
   }
+  .dashboard-card span { color: var(--muted); font-size: 0.85rem; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  thead th {
-    text-align: left;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-tertiary);
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--border-hairline);
-    font-weight: 600;
-  }
-
-  tbody td {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border-hairline);
-    font-size: 13px;
-    color: var(--text-secondary);
-  }
-
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: var(--bg-hover); }
-
-  .cell-primary { color: var(--text-primary); font-weight: 600; }
-
-  .txn-amount {
-    font-family: var(--font-display);
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-
-  .status-pill {
+  /* status dots (generated by role-dashboard.js) */
+  .status-dot {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 5px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 999px;
   }
+  .status-dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-dot.online { background: rgba(16,185,129,0.12); color: var(--success); }
+  .status-dot.offline { background: rgba(239,68,68,0.12); color: var(--danger); }
 
-  .status-pill::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
+  /* table cell helpers */
+  .cell-primary { color: var(--text); font-weight: 700; }
+  .txn-amount { font-weight: 800; color: var(--text); }
+  .empty-state { text-align: center; color: var(--muted); padding: 20px 16px !important; }
 
-  .status-pill.completed { background: rgba(76,175,125,0.12); color: var(--status-green); }
-  .status-pill.flagged { background: rgba(212,168,67,0.12); color: var(--status-amber); }
-  .status-pill.voided { background: rgba(224,88,79,0.12); color: var(--status-red); }
-
-  .row-actions {
-    display: flex;
-    gap: 8px;
-  }
-
+  .row-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
   .icon-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 5px;
-    border: 1px solid var(--border-hairline);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    display: flex;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid rgba(15,23,42,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.75));
+    color: var(--muted);
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-  }
-
-  .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-  .icon-btn.danger:hover { background: rgba(224,88,79,0.12); color: var(--status-red); border-color: var(--status-red); }
-
-  .btn-void {
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 5px;
-    border: 1px solid var(--status-red);
-    background: transparent;
-    color: var(--status-red);
+    font-size: 13px;
     cursor: pointer;
+    transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease, color var(--transition-fast) ease;
   }
-  .btn-void:hover { background: rgba(224,88,79,0.1); }
-
-  .btn-override {
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 5px;
-    border: 1px solid var(--status-amber);
-    background: transparent;
-    color: var(--status-amber);
-    cursor: pointer;
+  .icon-btn:hover { color: var(--primary); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37,99,235,0.12); }
+  html[data-theme="dark"] .icon-btn {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border-color: rgba(255,255,255,0.06);
+    color: var(--muted);
   }
-  .btn-override:hover { background: rgba(212,168,67,0.1); }
 
-  /* ---------- INVENTORY ---------- */
+  /* stock bars (generated by role-dashboard.js) */
   .stock-bar-track {
-    width: 80px;
-    height: 5px;
-    background: var(--border-hairline);
-    border-radius: 3px;
-    overflow: hidden;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
+    width: 90px; height: 6px; background: rgba(15,23,42,0.08);
+    border-radius: 4px; overflow: hidden; display: inline-block;
+    vertical-align: middle; margin-right: 8px;
   }
+  .stock-bar-fill { display: block; height: 100%; border-radius: 4px; }
+  .stock-bar-fill.healthy { background: var(--success); }
+  .stock-bar-fill.low { background: #d4a843; }
+  .stock-bar-fill.critical { background: var(--danger); }
+  .stock-label { font-size: 0.82rem; color: var(--muted); }
+  html[data-theme="dark"] .stock-bar-track { background: rgba(255,255,255,0.08); }
 
-  .stock-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-  }
-
-  .stock-bar-fill.healthy { background: var(--status-green); }
-  .stock-bar-fill.low { background: var(--status-amber); }
-  .stock-bar-fill.critical { background: var(--status-red); }
-
-  .stock-label { font-size: 12px; color: var(--text-tertiary); }
-
-  /* ---------- LOWER GRID ---------- */
-  .lower-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
+  /* reports list */
+  .report-list { display: grid; gap: 10px; }
   .report-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border-hairline);
+    gap: var(--space-md);
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.75));
+    border: 1px solid rgba(15,23,42,0.04);
+    transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
   }
-  .report-item:last-child { border-bottom: none; }
-
-  .report-name {
-    font-size: 13px;
-    color: var(--text-primary);
-    font-weight: 600;
-    margin-bottom: 2px;
+  .report-item:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,0.06); }
+  html[data-theme="dark"] .report-item {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border-color: rgba(255,255,255,0.05);
   }
-  .report-meta { font-size: 11.5px; color: var(--text-tertiary); }
+  .report-name { font-weight: 700; color: var(--text); font-size: 0.95rem; margin-bottom: 2px; }
+  .report-meta { font-size: 0.8rem; color: var(--muted); }
 
-  .placeholder-fn {
-    font-family: var(--font-display);
-    font-size: 10px;
-    color: var(--text-tertiary);
-    border: 1px dashed var(--border-hairline);
-    padding: 2px 6px;
-    border-radius: 3px;
+  @media (max-width: 1024px) {
+    .lower-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 900px) {
+    body { grid-template-columns: 76px 1fr; }
+    .brand-name, .nav-section-label, .nav-item span:last-child, .nav-footer-item span:last-child { display: none; }
+    .brand { justify-content: center; padding: 0; }
+    .nav-item, .nav-footer-item { justify-content: center; }
+  }
+  @media (max-width: 620px) {
+    .section-heading { flex-direction: column; align-items: flex-start; }
+    .page-header { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
@@ -503,18 +339,18 @@
 
     <nav class="nav-section">
       <div class="nav-section-label">Overview</div>
-      <a class="nav-item active"><span class="nav-icon">▣</span> Dashboard</a>
+      <a class="nav-item active" data-target="overviewSection"><span class="nav-icon">▣</span> <span>Dashboard</span></a>
     </nav>
 
     <nav class="nav-section">
       <div class="nav-section-label">Operations</div>
-      <a class="nav-item"><span class="nav-icon">⇄</span> Transactions</a>
-      <a class="nav-item"><span class="nav-icon">▦</span> Inventory</a>
-      <a class="nav-item"><span class="nav-icon">▥</span> Reports</a>
+      <a class="nav-item" data-target="transactionsSection"><span class="nav-icon">⇄</span> <span>Transactions</span></a>
+      <a class="nav-item" data-target="inventorySection"><span class="nav-icon">▦</span> <span>Inventory</span></a>
+      <a class="nav-item" data-target="reportsSection"><span class="nav-icon">▥</span> <span>Reports</span></a>
     </nav>
 
     <div class="nav-footer">
-      <div class="nav-footer-item" onclick="fnLogout()">⏻ Log out</div>
+      <div class="nav-footer-item" onclick="fnLogout()">⏻ <span>Log out</span></div>
     </div>
   </aside>
 
@@ -525,196 +361,153 @@
       <span class="topbar-breadcrumb">/ Dashboard</span>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-ghost" onclick="fnOpenNotifications()">🔔 <span class="placeholder-fn">fnNotif()</span></button>
+      <button class="icon-toggle" id="themeToggle" aria-label="Toggle dark and light mode">
+        <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="moonIcon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <button class="icon-toggle" onclick="fnOpenNotifications()" aria-label="Notifications">🔔</button>
       <div class="session-info">
-        <div class="name" id="currentUserName">Jhona Reyes</div>
+        <div class="name" id="currentUserName">Manager</div>
         <div class="role" id="currentRoleBadge">MANAGER</div>
       </div>
-      <div class="avatar-ring" onclick="fnOpenProfileMenu()">JR</div>
+      <div class="avatar-ring" onclick="fnOpenProfileMenu()">MG</div>
     </div>
   </header>
 
   <!-- ================= MAIN ================= -->
   <main class="main">
 
-    <div class="page-header">
-      <div>
-        <div class="page-title">Floor Overview</div>
-        <div class="page-subtitle">Monitor transactions, manage inventory, void or override sales</div>
+    <section id="overviewSection">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Manager Dashboard</div>
+          <div class="page-subtitle">Monitor transactions, manage inventory, and review flagged sales.</div>
+        </div>
+        <button class="primary-button" type="button" onclick="fnGenerateReport()">Generate Report</button>
       </div>
-      <button class="btn btn-green" onclick="fnGenerateReport()">Generate Report</button>
-    </div>
 
-    <!-- METRICS -->
-    <section class="metric-grid">
-      <div class="metric-card">
-        <div class="metric-label">Today's Sales</div>
-        <div class="metric-value" id="metricRevenue">₱48,210</div>
-        <div class="metric-delta up">▲ 12.4% vs yesterday</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Transactions Needing Action</div>
-        <div class="metric-value" id="metricFlags">2</div>
-        <div class="metric-delta down">Flagged for review</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Low Stock Items</div>
-        <div class="metric-value" id="metricLowStock">5</div>
-        <div class="metric-delta down">Reorder recommended</div>
-      </div>
+      <!-- METRICS -->
+      <section class="dashboard-grid">
+        <div class="dashboard-card">
+          <span>Today's Sales</span>
+          <strong id="metricRevenue">₱0.00</strong>
+        </div>
+        <div class="dashboard-card">
+          <span>Transactions Needing Action</span>
+          <strong id="metricFlags">0</strong>
+        </div>
+        <div class="dashboard-card">
+          <span>Low Stock Items</span>
+          <strong id="metricLowStock">0</strong>
+        </div>
+      </section>
     </section>
 
     <!-- TRANSACTIONS -->
-    <section class="panel">
-      <div class="panel-header">
+    <section id="transactionsSection">
+      <div class="section-heading">
         <div>
-          <div class="panel-title">Transactions</div>
-          <div class="panel-title-sub">Void or override as needed</div>
+          <h2>Transactions</h2>
+          <p>Void or override sales as needed.</p>
         </div>
-        <span class="placeholder-fn">fnLoadTransactions()</span>
+        <button class="secondary-button" type="button" onclick="fnLoadTransactions()">Refresh</button>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Txn ID</th>
-            <th>Cashier</th>
-            <th>Items</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="transactionsTableBody">
-          <tr>
-            <td class="cell-primary">#4471</td>
-            <td>Mark Tan</td>
-            <td>4 items</td>
-            <td class="txn-amount">₱1,240.00</td>
-            <td><span class="status-pill completed">Completed</span></td>
-            <td><div class="row-actions">
-              <button class="icon-btn" onclick="fnViewTransaction('4471')">↗</button>
-              <button class="btn-void" onclick="fnVoidTransaction('4471')">Void</button>
-            </div></td>
-          </tr>
-          <tr>
-            <td class="cell-primary">#4470</td>
-            <td>Carlo Dimaano</td>
-            <td>2 items</td>
-            <td class="txn-amount">₱560.00</td>
-            <td><span class="status-pill completed">Completed</span></td>
-            <td><div class="row-actions">
-              <button class="icon-btn" onclick="fnViewTransaction('4470')">↗</button>
-              <button class="btn-void" onclick="fnVoidTransaction('4470')">Void</button>
-            </div></td>
-          </tr>
-          <tr>
-            <td class="cell-primary">#4468</td>
-            <td>Mark Tan</td>
-            <td>7 items</td>
-            <td class="txn-amount">₱3,150.00</td>
-            <td><span class="status-pill flagged">Flagged</span></td>
-            <td><div class="row-actions">
-              <button class="icon-btn" onclick="fnViewTransaction('4468')">↗</button>
-              <button class="btn-override" onclick="fnOverrideTransaction('4468')">Override</button>
-            </div></td>
-          </tr>
-          <tr>
-            <td class="cell-primary">#4465</td>
-            <td>Carlo Dimaano</td>
-            <td>1 item</td>
-            <td class="txn-amount">₱85.00</td>
-            <td><span class="status-pill voided">Voided</span></td>
-            <td><div class="row-actions">
-              <button class="icon-btn" onclick="fnViewTransaction('4465')">↗</button>
-            </div></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="inventory-main">
+        <div class="table-panel" role="region" aria-label="Transactions table">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th scope="col">Txn ID</th>
+                <th scope="col">Payment</th>
+                <th scope="col">Items</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Status</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody id="transactionsTableBody">
+              <tr><td class="empty-state" colspan="6">Loading transactions…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <div class="lower-grid">
       <!-- INVENTORY -->
-      <section class="panel">
+      <section id="inventorySection" class="inventory-main">
         <div class="panel-header">
-          <div class="panel-title">Inventory</div>
-          <span class="placeholder-fn">fnLoadInventory()</span>
+          <div>
+            <p class="eyebrow">Operations</p>
+            <h2>Inventory</h2>
+          </div>
+          <button class="secondary-button" type="button" onclick="fnLoadInventory()">Refresh</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Stock</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="inventoryTableBody">
-            <tr>
-              <td class="cell-primary">Bottled Water 500ml</td>
-              <td>
-                <span class="stock-bar-track"><span class="stock-bar-fill healthy" style="width:78%"></span></span>
-                <span class="stock-label">156 units</span>
-              </td>
-              <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnAdjustStock('water-500')">✎</button>
-              </div></td>
-            </tr>
-            <tr>
-              <td class="cell-primary">Instant Noodles</td>
-              <td>
-                <span class="stock-bar-track"><span class="stock-bar-fill low" style="width:24%"></span></span>
-                <span class="stock-label">18 units</span>
-              </td>
-              <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnAdjustStock('noodles')">✎</button>
-              </div></td>
-            </tr>
-            <tr>
-              <td class="cell-primary">Canned Sardines</td>
-              <td>
-                <span class="stock-bar-track"><span class="stock-bar-fill critical" style="width:8%"></span></span>
-                <span class="stock-label">4 units</span>
-              </td>
-              <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnAdjustStock('sardines')">✎</button>
-              </div></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-panel" role="region" aria-label="Inventory table">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Stock</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody">
+              <tr><td class="empty-state" colspan="3">Loading inventory…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- REPORTS -->
-      <section class="panel">
+      <section id="reportsSection" class="inventory-main">
         <div class="panel-header">
-          <div class="panel-title">Reports</div>
-          <span class="placeholder-fn">fnGenerateReport()</span>
+          <div>
+            <p class="eyebrow">Operations</p>
+            <h2>Reports</h2>
+          </div>
         </div>
-        <div id="reportsList">
+        <div class="report-list" id="reportsList">
           <div class="report-item">
             <div>
               <div class="report-name">Daily Sales Summary</div>
               <div class="report-meta">Generated automatically · 11:59 PM</div>
             </div>
-            <button class="icon-btn" onclick="fnViewReport('daily-sales')">↗</button>
+            <button class="icon-btn" type="button" onclick="fnViewReport('daily-sales')">↗</button>
           </div>
           <div class="report-item">
             <div>
               <div class="report-name">Voided / Overridden Log</div>
-              <div class="report-meta">2 entries today</div>
+              <div class="report-meta">Reviewed at end of shift</div>
             </div>
-            <button class="icon-btn" onclick="fnViewReport('voided-log')">↗</button>
+            <button class="icon-btn" type="button" onclick="fnViewReport('voided-log')">↗</button>
           </div>
           <div class="report-item">
             <div>
               <div class="report-name">Low Stock Report</div>
-              <div class="report-meta">5 items below threshold</div>
+              <div class="report-meta">Items below reorder threshold</div>
             </div>
-            <button class="icon-btn" onclick="fnViewReport('low-stock')">↗</button>
+            <button class="icon-btn" type="button" onclick="fnViewReport('low-stock')">↗</button>
           </div>
         </div>
       </section>
     </div>
 
   </main>
+
+  <div class="toast hidden" id="toastMessage" role="status" aria-live="polite"></div>
 
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
@@ -731,9 +524,48 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
+<script src="../theme-utils.js"></script>
 <script src="role-dashboard.js"></script>
 <script>
+  // Smooth-scroll sidebar navigation, with the nav item highlighting
+  // itself to match whichever section is currently in view.
+  (function () {
+    const navItems = Array.from(document.querySelectorAll('.nav-item[data-target]'));
+    const sections = navItems
+      .map((item) => document.getElementById(item.dataset.target))
+      .filter(Boolean);
+
+    navItems.forEach((item) => {
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        const target = document.getElementById(item.dataset.target);
+        if (!target) return;
+        navItems.forEach((navItem) => navItem.classList.remove('active'));
+        item.classList.add('active');
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    if ('IntersectionObserver' in window && sections.length) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.find((entry) => entry.isIntersecting);
+          if (!visible) return;
+          const matchingItem = navItems.find((item) => item.dataset.target === visible.target.id);
+          if (!matchingItem) return;
+          navItems.forEach((navItem) => navItem.classList.remove('active'));
+          matchingItem.classList.add('active');
+        },
+        { root: document.querySelector('.main'), threshold: 0.35 }
+      );
+      sections.forEach((section) => observer.observe(section));
+    }
+  })();
+
   window.addEventListener('DOMContentLoaded', async () => {
+    themeUtils.initTheme();
+    document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
+
     window.roleDashboard.initRoleDashboard({
       defaultRole: 'manager',
       userNameId: 'currentUserName',
