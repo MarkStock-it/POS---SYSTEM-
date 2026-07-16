@@ -9,6 +9,7 @@ const state = {
   discountPercent: 0,
   customCategories: [],
   pendingImageDataUrl: '',
+  manualPriceMode: false,
 };
 
 const fallbackImage = '/images/placeholder.svg';
@@ -435,7 +436,7 @@ function calculateTotals() {
 }
 
 function addToCart(productId) {
-  const product = state.products.find((item) => item.id === productId);
+  const product = state.products.find((item) => String(item.id) === String(productId));
   if (!product) {
     showToast('Product not found in inventory', 'danger');
     return;
@@ -750,11 +751,19 @@ function openAddProductModal(product = null) {
   document.getElementById('productDescription').value = product?.description || '';
   document.getElementById('productCategory').value = product?.category || '';
   document.getElementById('productSku').value = product?.sku || '';
-  document.getElementById('productCost').value = product?.cost || '';
+  document.getElementById('productCost').value = Number(product?.cost) > 0 ? product.cost : '';
   document.getElementById('productPrice').value = product?.price || '';
   document.getElementById('productStock').value = product?.stock ?? '';
   document.getElementById('productThreshold').value = product?.threshold ?? '';
   state.pendingImageDataUrl = product?.image && String(product.image).startsWith('data:') ? product.image : '';
+  state.manualPriceMode = Boolean(product && !(Number(product.cost) > 0));
+  document.getElementById('markupSlider').value = '30';
+  updatePriceModeUi();
+  if (state.manualPriceMode) {
+    onManualPriceInput();
+  } else {
+    recalcSellingPrice();
+  }
   const preview = document.getElementById('imagePreview');
   if (product?.image) {
     preview.style.backgroundImage = `url('${product.image}')`;
@@ -766,6 +775,49 @@ function openAddProductModal(product = null) {
     preview.textContent = 'Image preview';
   }
   modal.classList.remove('hidden');
+}
+
+function updatePriceModeUi() {
+  const manualField = document.getElementById('manualPriceField');
+  const toggle = document.getElementById('priceModeToggle');
+  const slider = document.getElementById('markupSlider');
+  if (manualField) manualField.style.display = state.manualPriceMode ? '' : 'none';
+  if (toggle) toggle.textContent = state.manualPriceMode ? 'use markup' : 'edit manually';
+  if (slider) slider.disabled = state.manualPriceMode;
+}
+
+function recalcSellingPrice() {
+  if (state.manualPriceMode) {
+    onManualPriceInput();
+    return;
+  }
+  const cost = Math.max(0, Number(document.getElementById('productCost')?.value) || 0);
+  const markup = Math.max(0, Number(document.getElementById('markupSlider')?.value) || 0);
+  const margin = cost * (markup / 100);
+  const sellingPrice = cost + margin;
+
+  document.getElementById('markupPill').textContent = `${markup}%`;
+  document.getElementById('sellingPriceDisplay').textContent = formatCurrency(sellingPrice);
+  document.getElementById('marginDisplay').textContent = `+${formatCurrency(margin)}`;
+  if (!state.manualPriceMode) document.getElementById('productPrice').value = sellingPrice.toFixed(2);
+}
+
+function onManualPriceInput() {
+  if (!state.manualPriceMode) return;
+  const cost = Math.max(0, Number(document.getElementById('productCost')?.value) || 0);
+  const sellingPrice = Math.max(0, Number(document.getElementById('productPrice')?.value) || 0);
+  const margin = sellingPrice - cost;
+  const markup = cost > 0 ? (margin / cost) * 100 : 0;
+  document.getElementById('sellingPriceDisplay').textContent = formatCurrency(sellingPrice);
+  document.getElementById('marginDisplay').textContent = `${margin >= 0 ? '+' : '-'}${formatCurrency(Math.abs(margin))}`;
+  document.getElementById('markupPill').textContent = `${Math.round(markup)}%`;
+}
+
+function toggleManualPrice() {
+  state.manualPriceMode = !state.manualPriceMode;
+  updatePriceModeUi();
+  if (state.manualPriceMode) onManualPriceInput();
+  else recalcSellingPrice();
 }
 
 function closeProductModal() {
@@ -887,7 +939,7 @@ function saveProduct() {
 }
 
 function editProduct(id) {
-  const product = state.products.find((item) => item.id === id);
+  const product = state.products.find((item) => String(item.id) === String(id));
   if (!product) {
     showToast('Product not found', 'danger');
     return;
