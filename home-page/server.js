@@ -304,7 +304,7 @@ console.log(`[SERVER] MySQL database: ${process.env.DB_NAME || 's25103705_Ely'}`
 console.log(`[SERVER] PHP bridge root: ${PHP_TEST_ROOT}`);
 
 app.use(phpCliMiddleware);
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   return res.redirect('/login-page/login.html');
