@@ -32,9 +32,18 @@ $hash = password_hash($password, PASSWORD_DEFAULT);
 $stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`) VALUES (?, ?, ?, "active", ?, ?)');
 $stmt->bind_param('ssiss', $fullName, $hash, $roleRow['role_id'], $email, $username);
 
-if (!$stmt->execute()) {
-    http_response_code(409);
-    echo json_encode(['error' => 'That email already exists.']);
+try {
+    $stmt->execute();
+} catch (mysqli_sql_exception $e) {
+    if ((int) $e->getCode() === 1062) {
+        http_response_code(409);
+        echo json_encode(['error' => 'That email or username already exists.']);
+        exit;
+    }
+
+    error_log('Registration failed: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Registration failed. Please try again.']);
     exit;
 }
 

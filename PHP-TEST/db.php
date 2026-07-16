@@ -4,9 +4,7 @@ if (is_readable($envFile)) {
     $env = parse_ini_file($envFile, false, INI_SCANNER_RAW);
     if (is_array($env)) {
         foreach ($env as $key => $value) {
-            if (getenv($key) === false) {
-                putenv($key . '=' . $value);
-            }
+            putenv($key . '=' . $value);
         }
     }
 }

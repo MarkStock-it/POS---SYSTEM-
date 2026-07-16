@@ -27,7 +27,7 @@ $mysqli->begin_transaction();
 
 $receiptNo = 'RCPT-' . date('YmdHis') . '-' . random_int(1000, 9999);
 $stmt = $mysqli->prepare('INSERT INTO `transaction` (`receipt_no`, `payment_method`, `amount_tendered`, `transaction_status`, `subtotal`, `tax`, `total`, `change_amount`) VALUES (?, ?, ?, "completed", ?, ?, ?, ?)');
-$stmt->bind_param('ssdddd', $receiptNo, $paymentMethod, $amountTendered, $subtotal, $tax, $total, $changeAmount);
+$stmt->bind_param('ssddddd', $receiptNo, $paymentMethod, $amountTendered, $subtotal, $tax, $total, $changeAmount);
 if (!$stmt->execute()) {
     $mysqli->rollback();
     http_response_code(500);
