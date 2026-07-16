@@ -10,6 +10,9 @@ const checkoutState = {
   paymentMethod: 'Cash',
 };
 
+const checkoutScriptUrl = document.currentScript?.src || window.location.href;
+const checkoutApiUrl = new URL('../PHP-TEST/checkout.php', checkoutScriptUrl).pathname;
+
 function formatCurrency(value) {
   return `$${Number(value).toFixed(2)}`;
 }
@@ -193,7 +196,7 @@ function submitCheckout() {
     })),
   };
 
-  fetch('/api/checkout/v2', {
+  fetch(checkoutApiUrl, {
     method: 'POST',
     headers: getApiHeaders(),
     body: JSON.stringify(payload),
@@ -213,29 +216,8 @@ function submitCheckout() {
       }, 1800);
     })
     .catch((error) => {
-      console.error('Checkout v2 failed, trying original endpoint:', error);
-      // Fallback to original endpoint
-      fetch('/api/checkout', {
-        method: 'POST',
-        headers: getApiHeaders(),
-        body: JSON.stringify(payload),
-      })
-        .then(parseJsonResponse)
-        .then((result) => {
-          if (result.error) throw new Error(result.error);
-          showToast(`Checkout completed. Total ${formatCurrency(result.total)}`);
-          sessionStorage.removeItem('posCheckoutData');
-          sessionStorage.removeItem('posCart');
-          sessionStorage.removeItem('posDiscountPercent');
-          document.getElementById('confirmButton')?.setAttribute('disabled', 'disabled');
-          setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1800);
-        })
-        .catch((fallbackError) => {
-          console.error('Checkout failed:', fallbackError);
-          showToast(fallbackError.message || 'Checkout failed', 'danger');
-        });
+      console.error('Checkout failed:', error);
+      showToast(error.message || 'Checkout failed', 'danger');
     });
 }
 

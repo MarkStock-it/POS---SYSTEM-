@@ -552,18 +552,17 @@ function holdTransaction() {
   showToast('Transaction held. Use the same cart to resume later.');
 }
 
+const homeScriptUrl = document.currentScript?.src || window.location.href;
+const phpApiRoot = new URL('../PHP-TEST/', homeScriptUrl);
+const phpApi = (path, params = '') => `${new URL(path, phpApiRoot).pathname}${params}`;
+
 function fetchProducts() {
   const query = new URLSearchParams();
   const searchValue = state.inventorySearch || state.productSearch;
   if (searchValue) query.set('search', searchValue);
   if (state.activeStockFilter && state.activeStockFilter !== 'all') query.set('stock', state.activeStockFilter);
 
-  const paths = [
-    `/products?${query.toString()}`,
-    `/api/products?${query.toString()}`,
-    `${window.location.origin}/products?${query.toString()}`,
-    `${window.location.origin}/api/products?${query.toString()}`,
-  ];
+  const paths = [phpApi('products.php', `?${query.toString()}`)];
 
   const tryFetch = (index) => {
     if (index >= paths.length) {
@@ -864,7 +863,7 @@ function saveProduct() {
   };
 
   // For new products, use the dual-write v2 endpoint
-  const url = state.editingProductId ? `/api/products/${state.editingProductId}` : '/api/products/v2';
+  const url = phpApi('products.php', state.editingProductId ? `?id=${encodeURIComponent(state.editingProductId)}` : '');
   const method = state.editingProductId ? 'PUT' : 'POST';
 
   fetch(url, {
@@ -883,27 +882,7 @@ function saveProduct() {
     })
     .catch((error) => {
       console.error('Save failed:', error);
-      // Fallback to original endpoint if v2 fails
-      if (!state.editingProductId) {
-        fetch('/api/products', {
-          method: 'POST',
-          headers: getApiHeaders(),
-          body: JSON.stringify(payload),
-        })
-          .then(parseJsonResponse)
-          .then((result) => {
-            if (result.error) throw new Error(result.error);
-            showToast('Product saved successfully');
-            closeProductModal();
-            loadProducts();
-          })
-          .catch((fallbackError) => {
-            console.error('Fallback save failed:', fallbackError);
-            showToast(fallbackError.message || 'Unable to save product', 'danger');
-          });
-      } else {
-        showToast(error.message || 'Unable to save product', 'danger');
-      }
+      showToast(error.message || 'Unable to save product', 'danger');
     });
 }
 
@@ -919,7 +898,7 @@ function editProduct(id) {
 function deleteProduct(id) {
   if (!confirm('Delete this product from inventory?')) return;
 
-  fetch(`/api/products/${id}`, {
+  fetch(phpApi('products.php', `?id=${encodeURIComponent(id)}`), {
     method: 'DELETE',
     headers: getApiHeaders(),
   })
@@ -955,7 +934,7 @@ function processPayment(paymentMethod) {
     })),
   };
 
-  fetch('/api/checkout/v2', {
+  fetch(phpApi('checkout.php'), {
     method: 'POST',
     headers: getApiHeaders(),
     body: JSON.stringify(payload),
@@ -969,22 +948,8 @@ function processPayment(paymentMethod) {
       showToast(`Payment successful: ${paymentMethod}. Total ${formatCurrency(result.total)}`);
     })
     .catch((error) => {
-      console.error('Checkout v2 failed, trying original:', error);
-      fetch('/api/checkout', {
-        method: 'POST',
-        headers: getApiHeaders(),
-        body: JSON.stringify(payload),
-      })
-        .then(parseJsonResponse)
-        .then((result) => {
-          if (result.error) throw new Error(result.error);
-          clearCart();
-          showToast(`Payment successful: ${paymentMethod}. Total ${formatCurrency(result.total)}`);
-        })
-        .catch((fallbackError) => {
-          console.error('Checkout failed:', fallbackError);
-          showToast(fallbackError.message || 'Payment failed', 'danger');
-        });
+      console.error('Checkout failed:', error);
+      showToast(error.message || 'Payment failed', 'danger');
     });
 }
 

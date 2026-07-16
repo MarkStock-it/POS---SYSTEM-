@@ -1,4 +1,7 @@
 (function () {
+  const scriptUrl = document.currentScript?.src || window.location.href;
+  const projectRoot = new URL('../', scriptUrl);
+  const phpApi = (path, params = '') => `${new URL(`PHP-TEST/${path}`, projectRoot).pathname}${params}`;
   const ROLE_DASHBOARD_PATHS = {
     'super-admin': '../New_Index/super-admin.html',
     admin: '../New_Index/admin.html',
@@ -145,7 +148,7 @@
 
   async function loadDashboardSummary() {
     try {
-      const summary = await fetchJson('/api/dashboard/summary');
+      const summary = await fetchJson(phpApi('dashboard.php'));
       const revenueNode = document.getElementById('metricRevenue');
       const sessionsNode = document.getElementById('metricSessions');
       const flagsNode = document.getElementById('metricFlags');
@@ -164,7 +167,7 @@
 
   async function loadTransactions(targetTableId) {
     try {
-      const transactions = await fetchJson('/api/transactions');
+      const transactions = await fetchJson(phpApi('transactions.php'));
       const tableBody = document.getElementById(targetTableId);
       if (!tableBody) return;
       if (!Array.isArray(transactions) || !transactions.length) {
@@ -193,7 +196,7 @@
 
   async function loadInventory(targetTableId) {
     try {
-      const products = await fetchJson('/api/products');
+      const products = await fetchJson(phpApi('products.php'));
       const tableBody = document.getElementById(targetTableId);
       if (!tableBody) return;
       if (!Array.isArray(products) || !products.length) {
@@ -227,13 +230,7 @@
     tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading users...</td></tr>';
 
     try {
-      let users = [];
-      try {
-        users = await fetchJson('/PHP-TEST/auth/users.php');
-      } catch (phpError) {
-        console.warn('PHP user list failed, falling back to Node API:', phpError.message || phpError);
-        users = await fetchJson('/api/auth/users');
-      }
+      const users = await fetchJson(phpApi('auth/users.php'));
 
       if (!Array.isArray(users) || !users.length) {
         tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No users found.</td></tr>';
@@ -280,12 +277,12 @@
 
   async function editUser(userId) {
     try {
-      const user = await fetchJson(`/api/auth/users/${userId}`);
+      const user = await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`));
       const nextRole = window.prompt(`Update role for ${user.fullName || user.username || userId}`, user.role || 'cashier');
       if (nextRole === null) return;
       const nextStatus = window.prompt(`Set status for ${user.fullName || user.username || userId}`, user.status || 'active');
       if (nextStatus === null) return;
-      await fetchJson(`/api/auth/users/${userId}`, {
+      await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`), {
         method: 'PUT',
         body: JSON.stringify({ role: nextRole, status: nextStatus }),
       });
@@ -301,7 +298,7 @@
   async function toggleUserStatus(userId, currentStatus) {
     try {
       const nextStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-      await fetchJson(`/api/auth/users/${userId}`, {
+      await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`), {
         method: 'PUT',
         body: JSON.stringify({ status: nextStatus }),
       });
@@ -323,13 +320,13 @@
     }
 
     try {
-      const products = await fetchJson('/api/products');
+      const products = await fetchJson(phpApi('products.php'));
       const product = products.find((entry) => String(entry.id) === String(productId));
       if (!product) {
         window.alert('Product not found.');
         return;
       }
-      await fetchJson(`/api/products/${productId}`, {
+      await fetchJson(phpApi('products.php', `?id=${encodeURIComponent(productId)}`), {
         method: 'PUT',
         body: JSON.stringify({ ...product, stock: parsed }),
       });
