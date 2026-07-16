@@ -29,8 +29,8 @@ if (!$roleRow) {
 }
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
-$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`) VALUES (?, ?, ?, "active", ?)');
-$stmt->bind_param('siss', $fullName, $hash, $roleRow['role_id'], $email);
+$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`) VALUES (?, ?, ?, "active", ?, ?)');
+$stmt->bind_param('ssiss', $fullName, $hash, $roleRow['role_id'], $email, $username);
 
 if (!$stmt->execute()) {
     http_response_code(409);

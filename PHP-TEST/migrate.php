@@ -13,7 +13,10 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
 
 $statements = [
     "ALTER TABLE `user` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'active';",
-    "ALTER TABLE `user` MODIFY `full_name` VARCHAR(150) NOT NULL;"
+    "ALTER TABLE `user` MODIFY `full_name` VARCHAR(150) NOT NULL;",
+    "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `username` VARCHAR(100) NULL UNIQUE AFTER `email`;",
+    "ALTER TABLE `category` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'active';",
+    "ALTER TABLE `product` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'active';"
 ];
 
 foreach ($statements as $statement) {

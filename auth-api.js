@@ -1,6 +1,13 @@
+const authApiScriptUrl = document.currentScript && document.currentScript.src
+  ? document.currentScript.src
+  : window.location.href;
+
 function getApiBaseUrl() {
   const rawBase = typeof window !== 'undefined' ? window.PHP_API_BASE_URL : '';
-  return typeof rawBase === 'string' && rawBase.trim() ? rawBase.trim() : '';
+  if (typeof rawBase === 'string' && rawBase.trim() && rawBase.trim() !== '/') {
+    return rawBase.trim();
+  }
+  return new URL('.', authApiScriptUrl).pathname;
 }
 
 function normalizeApiPath(value) {
@@ -34,7 +41,13 @@ function joinApiUrl(baseUrl, endpoint) {
 }
 
 function mapEndpointToApiPath(url) {
-  return url;
+  const routes = {
+    '/api/auth/login': 'PHP-TEST/auth/login.php',
+    '/api/auth/register': 'PHP-TEST/auth/register.php',
+    '/api/auth/register/v2': 'PHP-TEST/auth/register.php',
+    '/api/auth/users': 'PHP-TEST/auth/users.php',
+  };
+  return routes[url] || url;
 }
 
 async function makeApiRequest(endpoint, options = {}) {

@@ -1,15 +1,19 @@
-Here is the complete, updated code block. It keeps all of your database logic and relationships perfectly intact while integrating the recommended fixes.
-
-### Key improvements added to this version:
-
-1. **Performance Check:** Added a `SHOW TABLES` check at the very beginning of the `ensureSchema` function. Instead of firing 15+ database queries on every single page load to check if tables exist, it runs just one. If the tables are already there, it skips the rest, significantly speeding up your application.
-2. **Robust Error Handling:** Wrapped the connection and schema generation in `try...catch` blocks and enabled `mysqli_report`. If a table fails to build, it will log the error silently in your server logs without crashing the rest of your PHP application.
-
-```php
 <?php
+$envFile = dirname(__DIR__) . '/.env';
+if (is_readable($envFile)) {
+    $env = parse_ini_file($envFile, false, INI_SCANNER_RAW);
+    if (is_array($env)) {
+        foreach ($env as $key => $value) {
+            if (getenv($key) === false) {
+                putenv($key . '=' . $value);
+            }
+        }
+    }
+}
+
 $host = getenv('DB_HOST') ?: 'localhost';
 $user = getenv('DB_USER') ?: 's25103705_Ely';
-$password = getenv('DB_PASSWORD') ?: 'Jumong09';
+$password = getenv('DB_PASSWORD') ?: '';
 $database = getenv('DB_NAME') ?: 's25103705_Ely';
 $port = (int) (getenv('DB_PORT') ?: 3306);
 $socket = getenv('DB_SOCKET') ?: null;
@@ -28,13 +32,6 @@ try {
 
 function ensureSchema($mysqli) {
     try {
-        // PERFORMANCE FIX: Check if the foundational 'role' table already exists.
-        // If it does, bypass the rest of the script to prevent running 15 queries on every page load.
-        $check = $mysqli->query("SHOW TABLES LIKE 'role'");
-        if ($check && $check->num_rows > 0) {
-            return; 
-        }
-
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `role` (
                 `role_id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -191,13 +188,13 @@ function ensureSchema($mysqli) {
             "INSERT IGNORE INTO `product` (`product_code`, `category_id`, `name`, `price`, `restock_threshold`, `status`, `image_path`) SELECT ?, `category_id`, ?, ?, ?, 'active', ? FROM `category` WHERE `name` = ?"
         );
         $stockStmt = $mysqli->prepare(
-            "INSERT IGNORE INTO `stock` (`product_id`, `quantity`) SELECT `product_id`, ? FROM `product` WHERE `product_code` = ?"
+            "INSERT INTO `stock` (`product_id`, `quantity`) SELECT `p`.`product_id`, ? FROM `product` AS `p` WHERE `p`.`product_code` = ? AND NOT EXISTS (SELECT 1 FROM `stock` AS `s` WHERE `s`.`product_id` = `p`.`product_id`)"
         );
 
         if ($productStmt && $stockStmt) {
             foreach ($products as $product) {
                 $restock = $product['restock_threshold'] ?? 5;
-                $productStmt->bind_param('sddsss', $product['code'], $product['name'], $product['price'], $restock, $product['image'], $product['category']);
+                $productStmt->bind_param('ssdiss', $product['code'], $product['name'], $product['price'], $restock, $product['image'], $product['category']);
                 $productStmt->execute();
 
                 $stockStmt->bind_param('is', $product['stock'], $product['code']);
@@ -218,5 +215,3 @@ function ensureSchema($mysqli) {
 // Executes safely. Will instantly bypass if tables are already built.
 ensureSchema($mysqli);
 ?>
-
-```
