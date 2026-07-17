@@ -473,6 +473,7 @@
     border-radius: 3px;
   }
 </style>
+<link rel="stylesheet" href="dashboard-theme.css?v=1">
 </head>
 <body>
 
@@ -579,7 +580,7 @@
               <td><span class="status-dot online">Online</span></td>
               <td>2 min ago</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('002')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('002', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('002')">⏸</button>
               </div></td>
             </tr>
@@ -589,7 +590,7 @@
               <td><span class="status-dot offline">Offline</span></td>
               <td>1 hour ago</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('003')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('003', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('003')">⏸</button>
               </div></td>
             </tr>
@@ -599,7 +600,7 @@
               <td><span class="status-dot online">Online</span></td>
               <td>Active now</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('004')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('004', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('004')">⏸</button>
               </div></td>
             </tr>
@@ -696,7 +697,7 @@
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
   function fnCreateAccount() { window.roleDashboard?.createAccount?.(); }
-  function fnEditAccount(id) { window.roleDashboard?.editUser?.(id); }
+  function fnEditAccount(id, button) { window.roleDashboard?.editUser?.(id, button); }
   function fnSuspendAccount(id) { window.roleDashboard?.toggleUserStatus?.(id); }
   function fnFilterStaff(role) { window.roleDashboard?.filterRowsByRole?.('staffTableBody', role); }
   function fnLoadTransactions() { window.roleDashboard?.loadTransactions?.('transactionsTableBody'); }

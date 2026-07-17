@@ -146,6 +146,77 @@
     return normalized === 'suspended' || normalized === 'inactive' ? 'offline' : 'online';
   }
 
+  async function recordActivity(actionText, entityType = '', entityId = '') {
+    const user = getCurrentUser();
+    try {
+      await fetchJson(phpApi('audit-log.php'), {
+        method: 'POST',
+        body: JSON.stringify({
+          actorUserId: Number(user.id) || null,
+          actorName: user.fullName || user.username || user.email || 'Unknown user',
+          actorRole: normalizeRole(user.role),
+          actionText,
+          entityType,
+          entityId: String(entityId || ''),
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to record activity:', error);
+    }
+  }
+
+  function relativeTime(value) {
+    const timestamp = new Date(String(value || '').replace(' ', 'T')).getTime();
+    if (!Number.isFinite(timestamp)) return 'Recently';
+    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  async function loadActivityFeed(targetId = 'activityFeed') {
+    const feed = document.getElementById(targetId);
+    if (!feed) return;
+    try {
+      const activities = await fetchJson(phpApi('audit-log.php', '?limit=12'));
+      feed.replaceChildren();
+      if (!Array.isArray(activities) || !activities.length) {
+        const empty = document.createElement('div');
+        empty.className = 'activity-item';
+        empty.textContent = 'No recorded activity yet.';
+        feed.appendChild(empty);
+        return;
+      }
+      activities.forEach((activity) => {
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        const dot = document.createElement('div');
+        dot.className = 'activity-dot';
+        const content = document.createElement('div');
+        const textNode = document.createElement('div');
+        textNode.className = 'activity-text';
+        const who = document.createElement('span');
+        who.className = 'who';
+        who.textContent = activity.actorName || 'System';
+        textNode.append(who, document.createTextNode(` ${activity.actionText || 'performed an action'}`));
+        const time = document.createElement('div');
+        time.className = 'activity-time';
+        time.textContent = relativeTime(activity.createdAt);
+        time.title = activity.createdAt || '';
+        content.append(textNode, time);
+        item.append(dot, content);
+        feed.appendChild(item);
+      });
+    } catch (error) {
+      feed.textContent = 'Unable to load system activity.';
+      console.error('Failed to load activity:', error);
+    }
+  }
+
   async function loadDashboardSummary() {
     try {
       const summary = await fetchJson(phpApi('dashboard.php'));
@@ -251,7 +322,7 @@
             <td><span class="status-dot ${statusClass}">${statusLabel}</span></td>
             <td>${lastActive}</td>
             <td><div class="row-actions">
-              <button class="icon-btn" onclick="window.roleDashboard?.editUser?.('${user.id}')">✎</button>
+              <button class="icon-btn" type="button" aria-label="Change role for ${user.fullName || user.username || user.id}" onclick="window.roleDashboard?.editUser?.('${user.id}', this)">✎</button>
               <button class="icon-btn" onclick="window.roleDashboard?.toggleUserStatus?.('${user.id}', '${user.status || 'active'}')">⏸</button>
             </div></td>
           </tr>
@@ -275,23 +346,106 @@
     });
   }
 
-  async function editUser(userId) {
+  let rolePickerOutsideHandler = null;
+
+  function closeRolePicker() {
+    document.querySelector('.role-picker-popover')?.remove();
+    document.removeEventListener('keydown', handleRolePickerEscape);
+    if (rolePickerOutsideHandler) {
+      document.removeEventListener('pointerdown', rolePickerOutsideHandler);
+      rolePickerOutsideHandler = null;
+    }
+  }
+
+  function handleRolePickerEscape(event) {
+    if (event.key === 'Escape') closeRolePicker();
+  }
+
+  async function editUser(userId, anchorButton) {
+    closeRolePicker();
     try {
       const user = await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`));
-      const nextRole = window.prompt(`Update role for ${user.fullName || user.username || userId}`, user.role || 'cashier');
-      if (nextRole === null) return;
-      const nextStatus = window.prompt(`Set status for ${user.fullName || user.username || userId}`, user.status || 'active');
-      if (nextStatus === null) return;
-      await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`), {
-        method: 'PUT',
-        body: JSON.stringify({ role: nextRole, status: nextStatus }),
+      const roles = [
+        { value: 'super-admin', label: 'Super Admin', icon: '★' },
+        { value: 'admin', label: 'Admin', icon: '⚙' },
+        { value: 'manager', label: 'Manager', icon: '◆' },
+        { value: 'cashier', label: 'Cashier', icon: '●' },
+      ];
+      const popover = document.createElement('div');
+      popover.className = 'role-picker-popover';
+      popover.setAttribute('role', 'dialog');
+      popover.setAttribute('aria-label', `Choose a role for ${user.fullName || user.username || userId}`);
+
+      const heading = document.createElement('div');
+      heading.className = 'role-picker-heading';
+      const title = document.createElement('strong');
+      title.textContent = 'Choose role';
+      const person = document.createElement('span');
+      person.textContent = user.fullName || user.username || `User #${userId}`;
+      heading.append(title, person);
+
+      const choices = document.createElement('div');
+      choices.className = 'role-picker-choices';
+      roles.forEach((role, index) => {
+        const choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = `role-choice-bubble${normalizeRole(user.role) === role.value ? ' selected' : ''}`;
+        choice.style.setProperty('--bubble-index', index);
+        choice.setAttribute('aria-pressed', normalizeRole(user.role) === role.value ? 'true' : 'false');
+        const icon = document.createElement('span');
+        icon.className = 'role-choice-icon';
+        icon.textContent = role.icon;
+        const label = document.createElement('span');
+        label.textContent = role.label;
+        choice.append(icon, label);
+        choice.addEventListener('click', async () => {
+          if (normalizeRole(user.role) === role.value) {
+            closeRolePicker();
+            return;
+          }
+          choices.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+          popover.classList.add('saving');
+          try {
+            await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`), {
+              method: 'PUT',
+              body: JSON.stringify({ role: role.value }),
+            });
+            await Promise.all([
+              loadUsers('staffTableBody'),
+              loadUsers('accountsTableBody'),
+              loadDashboardSummary(),
+              recordActivity(`changed ${user.fullName || user.username || `user #${userId}`} role to ${role.label}`, 'user', userId),
+            ]);
+            closeRolePicker();
+          } catch (error) {
+            choices.querySelectorAll('button').forEach((button) => { button.disabled = false; });
+            popover.classList.remove('saving');
+            window.alert(error.message || 'Unable to update user role.');
+          }
+        });
+        choices.appendChild(choice);
       });
-      await loadUsers('staffTableBody');
-      await loadUsers('accountsTableBody');
-      await loadDashboardSummary();
-      window.alert('User updated successfully.');
+      popover.append(heading, choices);
+      document.body.appendChild(popover);
+
+      const anchor = anchorButton instanceof Element ? anchorButton : document.activeElement;
+      const rect = anchor?.getBoundingClientRect?.() || { left: window.innerWidth / 2, right: window.innerWidth / 2, top: 80, bottom: 80 };
+      const popoverRect = popover.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - popoverRect.width - 12, Math.max(12, rect.right - popoverRect.width));
+      const roomBelow = window.innerHeight - rect.bottom;
+      const top = roomBelow >= popoverRect.height + 12 ? rect.bottom + 8 : Math.max(12, rect.top - popoverRect.height - 8);
+      popover.style.left = `${left}px`;
+      popover.style.top = `${top}px`;
+      requestAnimationFrame(() => popover.classList.add('open'));
+      document.addEventListener('keydown', handleRolePickerEscape);
+      setTimeout(() => {
+        rolePickerOutsideHandler = (event) => {
+          if (!popover.contains(event.target) && event.target !== anchor) closeRolePicker();
+        };
+        document.addEventListener('pointerdown', rolePickerOutsideHandler);
+      }, 0);
     } catch (error) {
-      window.alert(error.message || 'Unable to update user.');
+      window.alert(error.message || 'Unable to load user roles.');
     }
   }
 
@@ -304,6 +458,7 @@
       });
       await loadUsers('staffTableBody');
       await loadUsers('accountsTableBody');
+      await recordActivity(`${nextStatus === 'active' ? 'reactivated' : 'suspended'} user #${userId}`, 'user', userId);
       window.alert(`User status updated to ${nextStatus}.`);
     } catch (error) {
       window.alert(error.message || 'Unable to update user status.');
@@ -331,6 +486,7 @@
         body: JSON.stringify({ ...product, stock: parsed }),
       });
       await loadInventory('inventoryTableBody');
+      await recordActivity(`set ${productName || product.name} stock to ${parsed}`, 'product', productId);
       window.alert('Stock updated successfully.');
     } catch (error) {
       window.alert(error.message || 'Unable to update stock.');
@@ -346,6 +502,7 @@
   }
 
   function generateReport() {
+    recordActivity('generated a system report', 'report');
     window.alert('Reporting has been generated from the live POS data.');
   }
 
@@ -387,5 +544,7 @@
     openNotifications,
     openProfileMenu,
     refreshDashboard,
+    recordActivity,
+    loadActivityFeed,
   };
 })();

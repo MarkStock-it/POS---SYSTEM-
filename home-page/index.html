@@ -53,10 +53,6 @@
               <span>Search products</span>
               <input id="productSearchInput" type="search" placeholder="Search by name, SKU, or barcode" oninput="searchProducts()" />
             </label>
-            <label class="field-group field-group-barcode">
-              <span>Scan barcode</span>
-              <input id="barcodeInput" type="text" placeholder="Scan or type barcode" onkeydown="handleBarcodeKeydown(event)" />
-            </label>
           </div>
 
           <div class="category-pills" id="categoryPills" role="tablist" aria-label="Product categories"></div>
@@ -135,7 +131,6 @@
         </aside>
       </div>
 
-      <button class="fixed-inventory-button" type="button" onclick="toggleView('inventory')">Inventory Manager</button>
     </main>
 
     <main class="page page-inventory" id="inventoryPage" hidden>
@@ -148,7 +143,7 @@
             </div>
             <div class="panel-actions">
               <button class="primary-button" type="button" onclick="openAddProductModal()">+ Add Product</button>
-              <button class="secondary-button" type="button" onclick="toggleView('pos')">Back to POS</button>
+              <button class="secondary-button" type="button" onclick="leaveInventoryManager()">Back to Dashboard</button>
             </div>
           </div>
 
@@ -183,6 +178,13 @@
             </div>
           </div>
 
+          <div class="inventory-table-toolbar">
+            <div>
+              <strong>Physical stock count</strong>
+              <span id="stockChangesStatus">No unsaved counts</span>
+            </div>
+            <button class="primary-button stock-save-all" id="saveAllStockButton" type="button" onclick="saveAllCurrentStock()" disabled>Save Stock Counts</button>
+          </div>
           <div class="table-panel" role="region" aria-label="Product inventory table">
             <table class="inventory-table">
               <thead>
@@ -193,12 +195,13 @@
                   <th scope="col">SKU / Barcode</th>
                   <th scope="col">Price</th>
                   <th scope="col">Stock</th>
+                  <th scope="col">Current Stock</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody id="inventoryTableBody">
                 <tr>
-                  <td class="table-note" colspan="7">Loading products…</td>
+                  <td class="table-note" colspan="8">Loading products…</td>
                 </tr>
               </tbody>
             </table>
@@ -276,7 +279,7 @@
               <span>Pricing Markup <small>(Cost + markup = selling price)</small></span>
             </div>
             <div class="markup-line">
-              <input id="markupSlider" type="range" min="0" max="200" step="1" value="30" oninput="recalcSellingPrice()">
+              <input id="markupSlider" type="range" min="0" max="200" step="1" value="30" oninput="onMarkupSliderInput()" aria-label="Pricing markup percentage">
               <span class="markup-value" id="markupPill">30%</span>
             </div>
             <div class="price-out">

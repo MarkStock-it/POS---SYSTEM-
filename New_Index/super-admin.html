@@ -471,6 +471,7 @@
     border-radius: 3px;
   }
 </style>
+<link rel="stylesheet" href="dashboard-theme.css?v=1">
 </head>
 <body>
 
@@ -497,7 +498,7 @@
     <nav class="nav-section">
       <div class="nav-section-label">Operations</div>
       <a class="nav-item"><span class="nav-icon">⇄</span> All Transactions</a>
-      <a class="nav-item"><span class="nav-icon">▦</span> Inventory Overview</a>
+      <a class="nav-item" href="../home-page/index.html?view=inventory"><span class="nav-icon">▦</span> Inventory Manager</a>
     </nav>
 
     <nav class="nav-section">
@@ -591,7 +592,7 @@
               <td><span class="status-dot online">Online</span></td>
               <td>Active now</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('001')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('001', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('001')">⏸</button>
               </div></td>
             </tr>
@@ -601,7 +602,7 @@
               <td><span class="status-dot online">Online</span></td>
               <td>2 min ago</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('002')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('002', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('002')">⏸</button>
               </div></td>
             </tr>
@@ -611,7 +612,7 @@
               <td><span class="status-dot offline">Offline</span></td>
               <td>1 hour ago</td>
               <td><div class="row-actions">
-                <button class="icon-btn" onclick="fnEditAccount('003')">✎</button>
+                <button class="icon-btn" onclick="fnEditAccount('003', this)">✎</button>
                 <button class="icon-btn" onclick="fnSuspendAccount('003')">⏸</button>
               </div></td>
             </tr>
@@ -623,37 +624,10 @@
       <section class="panel">
         <div class="panel-header">
           <div class="panel-title">System Activity</div>
-          <span class="placeholder-fn">fnAuditFeed()</span>
+          <button class="icon-btn" type="button" onclick="window.roleDashboard?.loadActivityFeed?.('activityFeed')" aria-label="Refresh activity">↻</button>
         </div>
         <div id="activityFeed">
-          <div class="activity-item">
-            <div class="activity-dot"></div>
-            <div>
-              <div class="activity-text"><span class="who">Jhona Reyes</span> overrode transaction #4471</div>
-              <div class="activity-time">3 minutes ago</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-dot"></div>
-            <div>
-              <div class="activity-text"><span class="who">System</span> flagged transaction #4468 for review</div>
-              <div class="activity-time">22 minutes ago</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-dot"></div>
-            <div>
-              <div class="activity-text"><span class="who">Renz Villanueva</span> created cashier account "Mark Tan"</div>
-              <div class="activity-time">1 hour ago</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-dot"></div>
-            <div>
-              <div class="activity-text"><span class="who">Ely Salinas</span> updated system settings</div>
-              <div class="activity-time">3 hours ago</div>
-            </div>
-          </div>
+          <div class="activity-item"><div class="activity-dot"></div><div><div class="activity-text">Loading recent activity…</div></div></div>
         </div>
       </section>
     </div>
@@ -663,7 +637,7 @@
 <script>
   // ===== FUNCTION PLACEHOLDERS — wire these up to your backend =====
   function fnCreateAccount() { window.roleDashboard?.createAccount?.(); }
-  function fnEditAccount(id) { window.roleDashboard?.editUser?.(id); }
+  function fnEditAccount(id, button) { window.roleDashboard?.editUser?.(id, button); }
   function fnSuspendAccount(id) { window.roleDashboard?.toggleUserStatus?.(id); }
   function fnFilterAccounts(role) { window.roleDashboard?.filterRowsByRole?.('accountsTableBody', role); }
   function fnOpenNotifications() { window.roleDashboard?.openNotifications?.(); }
@@ -681,6 +655,8 @@
     });
     await window.roleDashboard.loadDashboardSummary?.();
     window.roleDashboard.loadUsers?.('accountsTableBody');
+    window.roleDashboard.loadActivityFeed?.('activityFeed');
+    window.setInterval(() => window.roleDashboard.loadActivityFeed?.('activityFeed'), 30000);
   });
 </script>
 </body>
