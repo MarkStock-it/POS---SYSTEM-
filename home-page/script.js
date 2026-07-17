@@ -1,3 +1,10 @@
+// Resolve navigation from this script instead of the domain root. The school
+// server publishes the application from a subdirectory, so root-absolute URLs
+// (for example, /login-page/login.html) lead to its 404 page.
+const homeScriptUrl = document.currentScript?.src || window.location.href;
+const projectRootUrl = new URL('../', homeScriptUrl);
+const homePageUrl = new URL('./', homeScriptUrl);
+
 const state = {
   products: [],
   cart: [],
@@ -115,7 +122,7 @@ function createScannerQrCode(sessionId) {
   const qrContainer = document.getElementById('scannerQrCode');
   if (!qrContainer) return;
   qrContainer.innerHTML = '';
-  const scanUrl = `${location.origin}/mobile-scanner.html?sessionId=${encodeURIComponent(sessionId)}`;
+  const scanUrl = new URL(`mobile-scanner.html?sessionId=${encodeURIComponent(sessionId)}`, homePageUrl).href;
   if (window.QRCode) {
     new QRCode(qrContainer, {
       text: scanUrl,
@@ -497,6 +504,10 @@ function goToCheckout() {
 }
 
 function logoutFromHome() {
+  // Stop the scanner first so its close handler cannot leave a reconnect timer
+  // running while the browser is navigating away.
+  disconnectPhoneScanner();
+
   try {
     localStorage.removeItem('posCurrentUser');
     sessionStorage.removeItem('posCurrentUser');
@@ -504,8 +515,7 @@ function logoutFromHome() {
     console.warn('Logout cleanup failed:', error);
   }
 
-  const loginUrl = `${window.location.origin}/login-page/login.html`;
-  window.location.replace(loginUrl);
+  window.location.replace(new URL('login-page/login.html', projectRootUrl).href);
 }
 
 function getApiHeaders(extraHeaders = {}) {
@@ -553,7 +563,6 @@ function holdTransaction() {
   showToast('Transaction held. Use the same cart to resume later.');
 }
 
-const homeScriptUrl = document.currentScript?.src || window.location.href;
 const phpApiRoot = new URL('../PHP-TEST/', homeScriptUrl);
 const phpApi = (path, params = '') => `${new URL(path, phpApiRoot).pathname}${params}`;
 
