@@ -334,7 +334,7 @@
               <span class="stock-bar-track"><span class="stock-bar-fill ${stateClass}" style="width:${percent}%"></span></span>
               <span class="stock-label">${stock} units</span>
             </td>
-            <td><div class="row-actions"><button class="icon-btn" onclick="window.roleDashboard?.adjustStock?.('${product.id}', '${product.name}')">✎</button></div></td>
+            <td><div class="row-actions"><button class="icon-btn" type="button" aria-label="Adjust stock for ${product.name}" onclick="window.roleDashboard?.adjustStock?.('${product.id}', this)">✎</button></div></td>
           </tr>
         `;
       }).join('');
@@ -514,15 +514,8 @@
     }
   }
 
-  async function adjustStock(productId, productName) {
-    const nextStock = window.prompt(`Set stock for ${productName}`, '0');
-    if (nextStock === null) return;
-    const parsed = Number(nextStock);
-    if (Number.isNaN(parsed)) {
-      showDashboardToast('Please enter a valid stock number.', 'warning');
-      return;
-    }
-
+  async function adjustStock(productId, anchorButton) {
+    document.querySelector('.stock-adjust-popover')?.remove();
     try {
       const products = await fetchJson(phpApi('products.php'));
       const product = products.find((entry) => String(entry.id) === String(productId));
@@ -530,13 +523,100 @@
         showDashboardToast('Product not found.', 'error');
         return;
       }
-      await fetchJson(phpApi('products.php', `?id=${encodeURIComponent(productId)}`), {
-        method: 'PUT',
-        body: JSON.stringify({ ...product, stock: parsed }),
+
+      const popover = document.createElement('form');
+      popover.className = 'stock-adjust-popover';
+      popover.setAttribute('aria-label', `Adjust stock for ${product.name}`);
+      const heading = document.createElement('div');
+      heading.className = 'stock-adjust-heading';
+      const title = document.createElement('strong');
+      title.textContent = 'Adjust stock';
+      const name = document.createElement('span');
+      name.textContent = product.name;
+      heading.append(title, name);
+      const field = document.createElement('label');
+      field.className = 'stock-adjust-field';
+      const fieldLabel = document.createElement('span');
+      fieldLabel.textContent = 'New quantity';
+      const inputWrap = document.createElement('div');
+      inputWrap.className = 'stock-adjust-input-wrap';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.step = '1';
+      input.required = true;
+      input.value = String(Math.max(0, Number(product.stock) || 0));
+      input.setAttribute('aria-label', 'New stock quantity');
+      const unit = document.createElement('span');
+      unit.textContent = 'pcs';
+      inputWrap.append(input, unit);
+      field.append(fieldLabel, inputWrap);
+      const actions = document.createElement('div');
+      actions.className = 'stock-adjust-actions';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'stock-adjust-cancel';
+      cancel.textContent = 'Cancel';
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.className = 'stock-adjust-save';
+      save.textContent = 'Save stock';
+      actions.append(cancel, save);
+      popover.append(heading, field, actions);
+      document.body.appendChild(popover);
+
+      const close = () => {
+        document.removeEventListener('pointerdown', outsideHandler);
+        document.removeEventListener('keydown', escapeHandler);
+        popover.classList.add('closing');
+        window.setTimeout(() => popover.remove(), 180);
+      };
+      const outsideHandler = (event) => {
+        if (!popover.contains(event.target) && event.target !== anchorButton) close();
+      };
+      const escapeHandler = (event) => { if (event.key === 'Escape') close(); };
+      cancel.addEventListener('click', close);
+      popover.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const parsed = Number(input.value);
+        if (!Number.isInteger(parsed) || parsed < 0) {
+          input.focus();
+          showDashboardToast('Stock must be a whole number of zero or more.', 'warning');
+          return;
+        }
+        input.disabled = true;
+        cancel.disabled = true;
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        try {
+          await fetchJson(phpApi('products.php', `?id=${encodeURIComponent(productId)}`), {
+            method: 'PUT',
+            body: JSON.stringify({ ...product, stock: parsed }),
+          });
+          await loadInventory('inventoryTableBody');
+          await recordActivity(`set ${product.name} stock to ${parsed}`, 'product', productId);
+          close();
+          showDashboardToast(`${product.name} stock updated to ${parsed}.`, 'success');
+        } catch (error) {
+          input.disabled = false;
+          cancel.disabled = false;
+          save.disabled = false;
+          save.textContent = 'Save stock';
+          showDashboardToast(error.message || 'Unable to update stock.', 'error');
+        }
       });
-      await loadInventory('inventoryTableBody');
-      await recordActivity(`set ${productName || product.name} stock to ${parsed}`, 'product', productId);
-      showDashboardToast('Stock updated successfully.', 'success');
+
+      const anchor = anchorButton instanceof Element ? anchorButton : document.activeElement;
+      const rect = anchor?.getBoundingClientRect?.() || { left: window.innerWidth / 2, right: window.innerWidth / 2, top: 80, bottom: 80 };
+      const popoverRect = popover.getBoundingClientRect();
+      popover.style.left = `${Math.min(window.innerWidth - popoverRect.width - 12, Math.max(12, rect.right - popoverRect.width))}px`;
+      popover.style.top = `${window.innerHeight - rect.bottom >= popoverRect.height + 12 ? rect.bottom + 8 : Math.max(12, rect.top - popoverRect.height - 8)}px`;
+      requestAnimationFrame(() => popover.classList.add('open'));
+      window.setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler);
+        document.addEventListener('keydown', escapeHandler);
+        input.select();
+      }, 0);
     } catch (error) {
       showDashboardToast(error.message || 'Unable to update stock.', 'error');
     }
