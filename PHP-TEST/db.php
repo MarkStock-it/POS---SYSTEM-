@@ -68,6 +68,7 @@ function ensureSchema($mysqli) {
                 `category_id` INT DEFAULT NULL,
                 `name` VARCHAR(150) NOT NULL,
                 `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                `cost_price` DECIMAL(10,2) NOT NULL DEFAULT 0,
                 `restock_threshold` INT NOT NULL DEFAULT 0,
                 `status` VARCHAR(20) NOT NULL DEFAULT 'active',
                 `delete_flag` TINYINT(1) NOT NULL DEFAULT 0,
@@ -78,6 +79,11 @@ function ensureSchema($mysqli) {
             ) ENGINE=InnoDB"
         );
 
+        $costColumn = $mysqli->query("SHOW COLUMNS FROM `product` LIKE 'cost_price'");
+        if ($costColumn && $costColumn->num_rows === 0) {
+            $mysqli->query("ALTER TABLE `product` ADD COLUMN `cost_price` DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER `price`");
+        }
+
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `stock` (
                 `stock_id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,6 +92,36 @@ function ensureSchema($mysqli) {
                 `expiry_date` DATE DEFAULT NULL,
                 `date_added` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT `fk_stock_product` FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `stock_check` (
+                `stock_check_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `product_id` INT NOT NULL,
+                `counted_quantity` INT NOT NULL,
+                `expected_quantity` INT NOT NULL,
+                `checked_by_user_id` INT DEFAULT NULL,
+                `checked_by_name` VARCHAR(150) DEFAULT NULL,
+                `checked_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_stock_check_product_time` (`product_id`, `checked_at`),
+                CONSTRAINT `fk_stock_check_product` FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE,
+                CONSTRAINT `fk_stock_check_user` FOREIGN KEY (`checked_by_user_id`) REFERENCES `user`(`user_id`) ON DELETE SET NULL
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `audit_log` (
+                `audit_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                `actor_user_id` INT DEFAULT NULL,
+                `actor_name` VARCHAR(150) NOT NULL,
+                `actor_role` VARCHAR(30) DEFAULT NULL,
+                `action_text` VARCHAR(500) NOT NULL,
+                `entity_type` VARCHAR(50) DEFAULT NULL,
+                `entity_id` VARCHAR(100) DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_audit_created_at` (`created_at`),
+                CONSTRAINT `fk_audit_actor` FOREIGN KEY (`actor_user_id`) REFERENCES `user`(`user_id`) ON DELETE SET NULL
             ) ENGINE=InnoDB"
         );
 

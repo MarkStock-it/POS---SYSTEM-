@@ -16,6 +16,7 @@ const state = {
   discountPercent: 0,
   customCategories: [],
   pendingImageDataUrl: '',
+  pendingImageFile: null,
   manualPriceMode: false,
 };
 
@@ -36,11 +37,53 @@ function showToast(message, type = 'success') {
   }, 3200);
 }
 
+function getCurrentUserRole() {
+  try {
+    return String((JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {}).role || '').trim().toLowerCase();
+  } catch (error) {
+    return '';
+  }
+}
+
+function canManageInventory() {
+  return ['manager', 'super-admin', 'superadmin', 'super admin'].includes(getCurrentUserRole());
+}
+
+async function recordInventoryActivity(actionText, entityType = 'inventory', entityId = '') {
+  if (!canManageInventory()) return;
+  let user = {};
+  try {
+    user = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {};
+  } catch (error) {
+    user = {};
+  }
+  try {
+    await fetch(phpApi('audit-log.php'), {
+      method: 'POST',
+      headers: getApiHeaders(),
+      body: JSON.stringify({
+        actorUserId: Number(user.id) || null,
+        actorName: user.fullName || user.username || user.email || 'Unknown user',
+        actorRole: getCurrentUserRole(),
+        actionText,
+        entityType,
+        entityId: String(entityId || ''),
+      }),
+    });
+  } catch (error) {
+    console.error('Unable to record inventory activity:', error);
+  }
+}
+
 function toggleView(view) {
   const posPage = document.getElementById('posPage');
   const inventoryPage = document.getElementById('inventoryPage');
 
   if (view === 'inventory') {
+    if (!canManageInventory()) {
+      showToast('Inventory Management is available only to managers and super admins.', 'danger');
+      return;
+    }
     posPage.hidden = true;
     posPage.classList.remove('active');
     inventoryPage.hidden = false;
@@ -53,14 +96,12 @@ function toggleView(view) {
   }
 }
 
-function handleBarcodeKeydown(event) {
-  if (event.key === 'Enter') {
-    const barcode = event.target.value.trim();
-    if (barcode) {
-      scanBarcode(barcode);
-      event.target.value = '';
-    }
-  }
+function leaveInventoryManager() {
+  const role = getCurrentUserRole();
+  const dashboardPath = ['super-admin', 'superadmin', 'super admin'].includes(role)
+    ? '../New_Index/super-admin.html'
+    : '../New_Index/manager.html';
+  window.location.href = dashboardPath;
 }
 
 function scanBarcode(barcode) {
@@ -645,7 +686,7 @@ function renderInventoryTable() {
   const filteredProducts = getFilteredProducts();
 
   if (!filteredProducts.length) {
-    inventoryTable.innerHTML = '<tr><td class="table-note" colspan="7">No inventory items match these filters.</td></tr>';
+    inventoryTable.innerHTML = '<tr><td class="table-note" colspan="8">No inventory items match these filters.</td></tr>';
     return;
   }
 
@@ -658,6 +699,12 @@ function renderInventoryTable() {
         <td>${product.sku} / ${product.barcode}</td>
         <td>${formatCurrency(product.price)}</td>
         <td>${product.stock}</td>
+        <td>
+          <div class="stock-check-control">
+            <input id="currentStock-${product.id}" class="stock-check-input" data-product-id="${product.id}" type="number" min="0" step="1" value="${product.currentStock ?? ''}" placeholder="Enter count" aria-label="Current physical stock for ${product.name}" oninput="markCurrentStockChanged(this)" />
+          </div>
+          ${product.stockVariance === null || product.stockVariance === undefined ? '<small class="stock-check-note">Not checked</small>' : `<small class="stock-check-note ${product.stockVariance === 0 ? 'matches' : 'mismatch'}">Variance: ${product.stockVariance > 0 ? '+' : ''}${product.stockVariance}</small>`}
+        </td>
         <td class="table-actions">
           <button class="table-button" type="button" onclick="editProduct('${product.id}')">Edit</button>
           <button class="table-button danger" type="button" onclick="deleteProduct('${product.id}')">Delete</button>
@@ -665,6 +712,76 @@ function renderInventoryTable() {
       </tr>
     `)
     .join('');
+}
+
+function updateStockChangesStatus() {
+  const changedInputs = document.querySelectorAll('.stock-check-input[data-changed="true"]');
+  const status = document.getElementById('stockChangesStatus');
+  const saveButton = document.getElementById('saveAllStockButton');
+  if (status) status.textContent = changedInputs.length ? `${changedInputs.length} unsaved ${changedInputs.length === 1 ? 'count' : 'counts'}` : 'No unsaved counts';
+  if (saveButton) saveButton.disabled = changedInputs.length === 0;
+}
+
+function markCurrentStockChanged(input) {
+  input.dataset.changed = 'true';
+  input.classList.add('has-change');
+  updateStockChangesStatus();
+}
+
+function saveAllCurrentStock() {
+  const changedInputs = Array.from(document.querySelectorAll('.stock-check-input[data-changed="true"]'));
+  if (!changedInputs.length) {
+    showToast('There are no changed stock counts to save.', 'danger');
+    return;
+  }
+
+  const invalidInput = changedInputs.find((input) => !Number.isInteger(Number(input.value)) || Number(input.value) < 0);
+  if (invalidInput) {
+    invalidInput.focus();
+    showToast('Every physical stock count must be a whole number of zero or more.', 'danger');
+    return;
+  }
+
+  let currentUser = {};
+  try {
+    currentUser = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {};
+  } catch (error) {
+    currentUser = {};
+  }
+
+  const saveButton = document.getElementById('saveAllStockButton');
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving…';
+  }
+  changedInputs.forEach((input) => { input.disabled = true; });
+
+  fetch(phpApi('stock-checks.php'), {
+    method: 'POST',
+    headers: getApiHeaders(),
+    body: JSON.stringify({
+      counts: changedInputs.map((input) => ({
+        productId: Number(input.dataset.productId),
+        countedQuantity: Number(input.value),
+      })),
+      checkedByUserId: Number(currentUser.id) || null,
+      checkedByName: currentUser.fullName || currentUser.username || currentUser.email || 'Unknown staff',
+    }),
+  })
+    .then(parseJsonResponse)
+    .then(() => {
+      showToast(`${changedInputs.length} physical stock ${changedInputs.length === 1 ? 'count' : 'counts'} saved.`);
+      recordInventoryActivity(`saved ${changedInputs.length} physical stock ${changedInputs.length === 1 ? 'count' : 'counts'}`, 'stock_check');
+      return loadProducts();
+    })
+    .catch((error) => {
+      changedInputs.forEach((input) => { input.disabled = false; });
+      showToast(error.message || 'Unable to save physical stock counts.', 'danger');
+    })
+    .finally(() => {
+      if (saveButton) saveButton.textContent = 'Save Stock Counts';
+      updateStockChangesStatus();
+    });
 }
 
 function renderInventoryCards() {
@@ -765,6 +882,7 @@ function openAddProductModal(product = null) {
   document.getElementById('productStock').value = product?.stock ?? '';
   document.getElementById('productThreshold').value = product?.threshold ?? '';
   state.pendingImageDataUrl = product?.image && String(product.image).startsWith('data:') ? product.image : '';
+  state.pendingImageFile = null;
   state.manualPriceMode = Boolean(product && !(Number(product.cost) > 0));
   document.getElementById('markupSlider').value = '30';
   updatePriceModeUi();
@@ -789,10 +907,14 @@ function openAddProductModal(product = null) {
 function updatePriceModeUi() {
   const manualField = document.getElementById('manualPriceField');
   const toggle = document.getElementById('priceModeToggle');
-  const slider = document.getElementById('markupSlider');
   if (manualField) manualField.style.display = state.manualPriceMode ? '' : 'none';
   if (toggle) toggle.textContent = state.manualPriceMode ? 'use markup' : 'edit manually';
-  if (slider) slider.disabled = state.manualPriceMode;
+}
+
+function onMarkupSliderInput() {
+  state.manualPriceMode = false;
+  updatePriceModeUi();
+  recalcSellingPrice();
 }
 
 function recalcSellingPrice() {
@@ -837,6 +959,7 @@ function closeProductModal() {
   preview.textContent = 'Image preview';
   state.editingProductId = null;
   state.pendingImageDataUrl = '';
+  state.pendingImageFile = null;
 }
 
 function previewProductImage(event) {
@@ -847,8 +970,22 @@ function previewProductImage(event) {
     preview.textContent = 'Image preview';
     preview.style.backgroundImage = 'none';
     state.pendingImageDataUrl = '';
+    state.pendingImageFile = null;
     return;
   }
+
+  if (!file.type.startsWith('image/')) {
+    event.target.value = '';
+    showToast('Please choose a valid image file.', 'danger');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    event.target.value = '';
+    showToast('Product images must be 5 MB or smaller.', 'danger');
+    return;
+  }
+
+  state.pendingImageFile = file;
 
   const reader = new FileReader();
   reader.onload = function () {
@@ -861,7 +998,20 @@ function previewProductImage(event) {
   reader.readAsDataURL(file);
 }
 
-function saveProduct() {
+async function uploadProductImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await fetch(phpApi('upload-product-image.php'), {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'x-pos-pin': '1234' },
+    body: formData,
+  });
+  const result = await parseJsonResponse(response);
+  if (!result.path) throw new Error('The image upload did not return a file path.');
+  return result.path;
+}
+
+async function saveProduct() {
   const name = document.getElementById('productName').value.trim();
   const category = document.getElementById('productCategory').value.trim();
   const sku = document.getElementById('productSku').value.trim();
@@ -898,6 +1048,18 @@ function saveProduct() {
   const existingProduct = state.products.find((product) => product.sku === sku || product.barcode === sku);
   const barcode = existingProduct ? `${sku}-${Date.now().toString().slice(-6)}` : sku;
 
+  const imageUrl = document.getElementById('productImageUrl').value.trim();
+  let savedImagePath = imageUrl || fallbackImage;
+  try {
+    if (state.pendingImageFile) {
+      savedImagePath = await uploadProductImage(state.pendingImageFile);
+    }
+  } catch (error) {
+    console.error('Image upload failed:', error);
+    showToast(error.message || 'Unable to upload product image.', 'danger');
+    return;
+  }
+
   const payload = {
     name,
     description: document.getElementById('productDescription').value.trim(),
@@ -908,43 +1070,32 @@ function saveProduct() {
     stock,
     cost: Number(document.getElementById('productCost').value) || 0,
     threshold: Number(document.getElementById('productThreshold').value) || 0,
-    // Don't persist base64 data URIs into SQLite. If the user pasted a
-    // data:image/... base64 string into the Image URL field, ignore it and
-    // fall back to the placeholder. A real image upload endpoint should be
-    // implemented to save uploaded files to the /images folder or cloud
-    // storage and then save the resulting URL here instead.
-    image: (function () {
-      if (state.pendingImageDataUrl) {
-        return state.pendingImageDataUrl;
-      }
-      const url = document.getElementById('productImageUrl').value.trim();
-      if (!url) return fallbackImage;
-      return url;
-    })(),
+    image: savedImagePath,
   };
 
   // For new products, use the dual-write v2 endpoint
-  const url = phpApi('products.php', state.editingProductId ? `?id=${encodeURIComponent(state.editingProductId)}` : '');
-  const method = state.editingProductId ? 'PUT' : 'POST';
+  const editingProductId = state.editingProductId;
+  const url = phpApi('products.php', editingProductId ? `?id=${encodeURIComponent(editingProductId)}` : '');
+  const method = editingProductId ? 'PUT' : 'POST';
 
-  fetch(url, {
-    method,
-    headers: getApiHeaders(),
-    body: JSON.stringify(payload),
-  })
-    .then(parseJsonResponse)
-    .then((result) => {
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: getApiHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const result = await parseJsonResponse(response);
       if (result.error) {
         throw new Error(result.error);
       }
-      showToast(state.editingProductId ? 'Product updated successfully' : 'Product saved successfully');
+      showToast(editingProductId ? 'Product updated successfully' : 'Product saved successfully');
+      recordInventoryActivity(`${editingProductId ? 'updated' : 'created'} product "${name}"`, 'product', result.id || editingProductId);
       closeProductModal();
       loadProducts();
-    })
-    .catch((error) => {
-      console.error('Save failed:', error);
-      showToast(error.message || 'Unable to save product', 'danger');
-    });
+  } catch (error) {
+    console.error('Save failed:', error);
+    showToast(error.message || 'Unable to save product', 'danger');
+  }
 }
 
 function editProduct(id) {
@@ -958,6 +1109,7 @@ function editProduct(id) {
 
 function deleteProduct(id) {
   if (!confirm('Delete this product from inventory?')) return;
+  const product = state.products.find((item) => String(item.id) === String(id));
 
   fetch(phpApi('products.php', `?id=${encodeURIComponent(id)}`), {
     method: 'DELETE',
@@ -969,6 +1121,7 @@ function deleteProduct(id) {
         throw new Error(result.error);
       }
       showToast('Product removed from inventory');
+      recordInventoryActivity(`removed product "${product?.name || id}"`, 'product', id);
       loadProducts();
     })
     .catch((error) => {
@@ -1041,6 +1194,15 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('disconnectScannerButton')?.addEventListener('click', disconnectPhoneScanner);
   document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
   themeUtils.initTheme();
+  const requestedView = new URLSearchParams(window.location.search).get('view');
+  if (requestedView === 'inventory') {
+    if (canManageInventory()) {
+      toggleView('inventory');
+    } else {
+      window.history.replaceState({}, '', window.location.pathname);
+      showToast('Inventory Management is available only to managers and super admins.', 'danger');
+    }
+  }
   // Discount input binding (if present)
   const discountInput = document.getElementById('discountInput');
   if (discountInput) {
