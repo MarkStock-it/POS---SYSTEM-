@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">POS System shopping cart</title>
+  <desc id="desc">A white shopping cart with two wheels</desc>
+  <g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 12h7l5.2 27.2a6 6 0 0 0 5.9 4.8h22.4a6 6 0 0 0 5.8-4.5L59 22H18"/>
+    <path d="M24 31h29M29 22l2 17M43 22l-2 17" opacity=".85"/>
+    <circle cx="28" cy="53" r="3.5" fill="#fff" stroke="none"/>
+    <circle cx="49" cy="53" r="3.5" fill="#fff" stroke="none"/>
+  </g>
+</svg>
