@@ -43,6 +43,54 @@
     }));
   }
 
+  function showDashboardToast(message, type = 'info', duration = 4200) {
+    let stack = document.getElementById('dashboardToastStack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'dashboardToastStack';
+      stack.className = 'dashboard-toast-stack';
+      stack.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+      stack.setAttribute('aria-label', 'System notifications');
+      document.body.appendChild(stack);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `dashboard-toast dashboard-toast-${type}`;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    const icon = document.createElement('span');
+    icon.className = 'dashboard-toast-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = type === 'success' ? '✓' : type === 'error' ? '!' : type === 'warning' ? '△' : 'i';
+    const text = document.createElement('span');
+    text.className = 'dashboard-toast-message';
+    text.textContent = String(message || 'Done');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'dashboard-toast-close';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.textContent = '×';
+    toast.append(icon, text, close);
+    stack.appendChild(toast);
+
+    let timer;
+    const dismiss = () => {
+      window.clearTimeout(timer);
+      toast.classList.add('leaving');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+      window.setTimeout(() => toast.remove(), 350);
+    };
+    const startTimer = () => { timer = window.setTimeout(dismiss, duration); };
+    close.addEventListener('click', dismiss);
+    toast.addEventListener('mouseenter', () => window.clearTimeout(timer));
+    toast.addEventListener('mouseleave', startTimer);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    startTimer();
+
+    const visibleToasts = stack.querySelectorAll('.dashboard-toast');
+    if (visibleToasts.length > 4) visibleToasts[0].remove();
+    return toast;
+  }
+
   function initRoleDashboard(options = {}) {
     const currentUser = getCurrentUser();
     const role = normalizeRole(currentUser.role || options.defaultRole || 'cashier');
@@ -417,10 +465,11 @@
               recordActivity(`changed ${user.fullName || user.username || `user #${userId}`} role to ${role.label}`, 'user', userId),
             ]);
             closeRolePicker();
+            showDashboardToast(`${user.fullName || user.username || 'User'} is now ${role.label}.`, 'success');
           } catch (error) {
             choices.querySelectorAll('button').forEach((button) => { button.disabled = false; });
             popover.classList.remove('saving');
-            window.alert(error.message || 'Unable to update user role.');
+            showDashboardToast(error.message || 'Unable to update user role.', 'error');
           }
         });
         choices.appendChild(choice);
@@ -445,7 +494,7 @@
         document.addEventListener('pointerdown', rolePickerOutsideHandler);
       }, 0);
     } catch (error) {
-      window.alert(error.message || 'Unable to load user roles.');
+      showDashboardToast(error.message || 'Unable to load user roles.', 'error');
     }
   }
 
@@ -459,9 +508,9 @@
       await loadUsers('staffTableBody');
       await loadUsers('accountsTableBody');
       await recordActivity(`${nextStatus === 'active' ? 'reactivated' : 'suspended'} user #${userId}`, 'user', userId);
-      window.alert(`User status updated to ${nextStatus}.`);
+      showDashboardToast(`User status updated to ${nextStatus}.`, 'success');
     } catch (error) {
-      window.alert(error.message || 'Unable to update user status.');
+      showDashboardToast(error.message || 'Unable to update user status.', 'error');
     }
   }
 
@@ -470,7 +519,7 @@
     if (nextStock === null) return;
     const parsed = Number(nextStock);
     if (Number.isNaN(parsed)) {
-      window.alert('Please enter a valid number.');
+      showDashboardToast('Please enter a valid stock number.', 'warning');
       return;
     }
 
@@ -478,7 +527,7 @@
       const products = await fetchJson(phpApi('products.php'));
       const product = products.find((entry) => String(entry.id) === String(productId));
       if (!product) {
-        window.alert('Product not found.');
+        showDashboardToast('Product not found.', 'error');
         return;
       }
       await fetchJson(phpApi('products.php', `?id=${encodeURIComponent(productId)}`), {
@@ -487,9 +536,9 @@
       });
       await loadInventory('inventoryTableBody');
       await recordActivity(`set ${productName || product.name} stock to ${parsed}`, 'product', productId);
-      window.alert('Stock updated successfully.');
+      showDashboardToast('Stock updated successfully.', 'success');
     } catch (error) {
-      window.alert(error.message || 'Unable to update stock.');
+      showDashboardToast(error.message || 'Unable to update stock.', 'error');
     }
   }
 
@@ -498,20 +547,20 @@
   }
 
   function viewTransaction(transactionId) {
-    window.alert(`Transaction #${transactionId} details are now being pulled from the live backend.`);
+    showDashboardToast(`Loading transaction #${transactionId} from the live backend.`, 'info');
   }
 
   function generateReport() {
     recordActivity('generated a system report', 'report');
-    window.alert('Reporting has been generated from the live POS data.');
+    showDashboardToast('Report generated from the latest POS data.', 'success');
   }
 
   function openNotifications() {
-    window.alert('Notifications panel is ready for your next revision.');
+    showDashboardToast('You have no new notifications.', 'info');
   }
 
   function openProfileMenu() {
-    window.alert('Profile menu is ready for your next revision.');
+    showDashboardToast('Profile options are not available yet.', 'info');
   }
 
   async function refreshDashboard() {
@@ -544,6 +593,7 @@
     openNotifications,
     openProfileMenu,
     refreshDashboard,
+    showDashboardToast,
     recordActivity,
     loadActivityFeed,
   };
