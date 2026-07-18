@@ -184,61 +184,14 @@ function ensureSchema($mysqli) {
             ) ENGINE=InnoDB"
         );
 
-        $mysqli->query("INSERT IGNORE INTO `role` (`role_type`) VALUES ('cashier'), ('manager'), ('admin'), ('super_admin')");
-        $mysqli->query("INSERT IGNORE INTO `category` (`name`, `status`) VALUES ('General', 'active'), ('Beverages', 'active'), ('Bakery', 'active'), ('Produce', 'active'), ('Dairy', 'active'), ('Snacks', 'active'), ('Household', 'active'), ('Electronics', 'active')");
-
-        $users = [
-            ['full_name' => 'Super Admin Demo', 'email' => 'superadmin@pos.com', 'role' => 'super_admin', 'password' => 'superadmin123'],
-            ['full_name' => 'Admin Demo', 'email' => 'admin@pos.com', 'role' => 'admin', 'password' => 'admin123'],
-            ['full_name' => 'Manager Demo', 'email' => 'manager@pos.com', 'role' => 'manager', 'password' => 'manager123'],
-            ['full_name' => 'Demo User', 'email' => 'demo@pos.com', 'role' => 'cashier', 'password' => 'password'],
-        ];
-
-        $userStmt = $mysqli->prepare(
-            "INSERT IGNORE INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`) SELECT ?, ?, `role_id`, 'active', ? FROM `role` WHERE `role_type` = ?"
+        $mysqli->query(
+            "INSERT INTO `role` (`role_id`, `role_type`) VALUES
+                (1, 'cashier'),
+                (2, 'manager'),
+                (3, 'admin'),
+                (4, 'super_admin')
+             ON DUPLICATE KEY UPDATE `role_type` = VALUES(`role_type`)"
         );
-        
-        if ($userStmt) {
-            foreach ($users as $user) {
-                $hash = password_hash($user['password'], PASSWORD_DEFAULT);
-                $userStmt->bind_param('ssss', $user['full_name'], $hash, $user['email'], $user['role']);
-                $userStmt->execute();
-            }
-            $userStmt->close();
-        }
-
-        $products = [
-            ['code' => '0001', 'name' => 'Bottled Water 500ml', 'category' => 'Beverages', 'price' => 1.25, 'stock' => 50, 'image' => '/images/water.jpg'],
-            ['code' => '0002', 'name' => 'Croissant', 'category' => 'Bakery', 'price' => 2.50, 'stock' => 30, 'image' => '/images/crossaint.jpeg'],
-            ['code' => '0003', 'name' => 'Banana (per lb)', 'category' => 'Produce', 'price' => 0.69, 'stock' => 100, 'image' => '/images/bunch-bananas-6175887.jpg.webp'],
-            ['code' => '0004', 'name' => 'Whole Milk 1L', 'category' => 'Dairy', 'price' => 3.10, 'stock' => 40, 'image' => '/images/milk.jpeg'],
-            ['code' => '0005', 'name' => 'Potato Chips', 'category' => 'Snacks', 'price' => 2.99, 'stock' => 25, 'image' => '/images/Lays_XL_Classic_Laydown.png'],
-            ['code' => '0006', 'name' => 'Coffee Beans 250g', 'category' => 'Beverages', 'price' => 6.75, 'stock' => 20, 'image' => '/images/coffee.jpeg'],
-            ['code' => '0007', 'name' => 'Dish Soap 750ml', 'category' => 'Household', 'price' => 3.45, 'stock' => 35, 'image' => '/images/soap.jpg'],
-            ['code' => '0008', 'name' => 'USB-C Cable 1m', 'category' => 'Electronics', 'price' => 8.99, 'stock' => 15, 'image' => '/images/usb-c.jpeg'],
-        ];
-
-        $productStmt = $mysqli->prepare(
-            "INSERT IGNORE INTO `product` (`product_code`, `category_id`, `name`, `price`, `restock_threshold`, `status`, `image_path`) SELECT ?, `category_id`, ?, ?, ?, 'active', ? FROM `category` WHERE `name` = ?"
-        );
-        $stockStmt = $mysqli->prepare(
-            "INSERT INTO `stock` (`product_id`, `quantity`) SELECT `p`.`product_id`, ? FROM `product` AS `p` WHERE `p`.`product_code` = ? AND NOT EXISTS (SELECT 1 FROM `stock` AS `s` WHERE `s`.`product_id` = `p`.`product_id`)"
-        );
-
-        if ($productStmt && $stockStmt) {
-            foreach ($products as $product) {
-                $restock = $product['restock_threshold'] ?? 5;
-                $productStmt->bind_param('ssdiss', $product['code'], $product['name'], $product['price'], $restock, $product['image'], $product['category']);
-                $productStmt->execute();
-
-                $stockStmt->bind_param('is', $product['stock'], $product['code']);
-                $stockStmt->execute();
-            }
-            $productStmt->close();
-            $stockStmt->close();
-        }
-
-        $mysqli->query("INSERT IGNORE INTO `discount_eligibility` (`discount_type`, `discount_rate`) VALUES ('Senior', 20.00), ('PWD', 20.00), ('Student', 20.00)");
 
     } catch (Exception $e) {
         // Logs the error to your server's PHP error log without breaking the UI

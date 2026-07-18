@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 
@@ -26,6 +27,9 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
     echo json_encode(['error' => 'Invalid credentials.']);
     exit;
 }
+
+session_regenerate_id(true);
+$_SESSION['pos_user_id'] = (int) $user['id'];
 
 $roleValue = strtolower(trim((string) ($user['role'] ?? '')));
 if (in_array($roleValue, ['super_admin', 'super-admin', 'superadmin', 'super admin'], true)) {

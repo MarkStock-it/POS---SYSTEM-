@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 
@@ -12,6 +13,42 @@ if ($method === 'PUT') {
     if ($userId <= 0 || ($role === '' && $status === '')) {
         http_response_code(400);
         echo json_encode(['error' => 'User ID and an update are required.']);
+        exit;
+    }
+    $actorUserId = (int) ($_SESSION['pos_user_id'] ?? 0);
+    $actorStmt = $mysqli->prepare('SELECT `r`.`role_type` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE `u`.`user_id` = ?');
+    $actorStmt->bind_param('i', $actorUserId);
+    $actorStmt->execute();
+    $actorRole = strtolower((string) (($actorStmt->get_result()->fetch_assoc()['role_type'] ?? '')));
+
+    $targetStmt = $mysqli->prepare('SELECT `r`.`role_type` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE `u`.`user_id` = ?');
+    $targetStmt->bind_param('i', $userId);
+    $targetStmt->execute();
+    $targetRole = strtolower((string) (($targetStmt->get_result()->fetch_assoc()['role_type'] ?? '')));
+
+    if ($targetRole === '') {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found.']);
+        exit;
+    }
+    if ($targetRole === 'super_admin' && $actorRole !== 'super_admin') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Only a super admin can modify a super admin account.']);
+        exit;
+    }
+    if ($actorRole === 'admin' && !in_array($targetRole, ['manager', 'cashier'], true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Admins can only manage manager and cashier accounts.']);
+        exit;
+    }
+    if ($actorRole === 'admin' && $role !== '' && !in_array($role, ['manager', 'cashier'], true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Admins can only assign manager or cashier roles.']);
+        exit;
+    }
+    if (!in_array($actorRole, ['admin', 'super_admin'], true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'You do not have permission to manage accounts.']);
         exit;
     }
     if ($role !== '') {

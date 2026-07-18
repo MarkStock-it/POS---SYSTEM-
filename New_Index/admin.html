@@ -473,7 +473,7 @@
     border-radius: 3px;
   }
 </style>
-<link rel="stylesheet" href="dashboard-theme.css?v=3">
+<link rel="stylesheet" href="dashboard-theme.css?v=4">
 </head>
 <body>
 
@@ -537,17 +537,17 @@
     <section class="metric-grid">
       <div class="metric-card">
         <div class="metric-label">Today's Sales</div>
-        <div class="metric-value" id="metricRevenue">₱48,210</div>
-        <div class="metric-delta up">▲ 12.4% vs yesterday</div>
+        <div class="metric-value" id="metricRevenue">Loading…</div>
+        <div class="metric-delta">Live transaction total</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Staff Online</div>
-        <div class="metric-value" id="metricSessions">9 / 25</div>
-        <div class="metric-delta">6 managers · 19 cashiers managed</div>
+        <div class="metric-value" id="metricSessions">Loading…</div>
+        <div class="metric-delta">Active accounts</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Pending Reviews</div>
-        <div class="metric-value" id="metricFlags">2</div>
+        <div class="metric-value" id="metricFlags">Loading…</div>
         <div class="metric-delta down">Awaiting your action</div>
       </div>
     </section>
@@ -632,7 +632,7 @@
           <div class="report-item">
             <div>
               <div class="report-name">Voided Transactions Log</div>
-              <div class="report-meta">3 entries this week</div>
+              <div class="report-meta">Generated from live transaction data</div>
             </div>
             <button class="icon-btn" onclick="fnViewReport('voided-log')">↗</button>
           </div>
@@ -709,7 +709,7 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
-<script src="role-dashboard.js?v=3"></script>
+<script src="role-dashboard.js?v=4"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({

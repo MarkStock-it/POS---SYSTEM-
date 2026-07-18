@@ -131,8 +131,15 @@
   }
 
   async function fetchJson(url, options = {}) {
+    const currentUser = getCurrentUser();
     const response = await fetch(url, {
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-pos-pin': '1234', ...(options.headers || {}) },
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'x-pos-pin': '1234',
+        'x-pos-user-id': String(currentUser.id || ''),
+        ...(options.headers || {}),
+      },
       ...options,
     });
 
@@ -356,7 +363,17 @@
         return;
       }
 
-      tableBody.innerHTML = users.map((user) => {
+      const currentRole = normalizeRole(getCurrentUser().role);
+      const visibleUsers = currentRole === 'admin'
+        ? users.filter((user) => ['manager', 'cashier'].includes(normalizeRole(user.role)))
+        : users;
+
+      if (!visibleUsers.length) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No manageable users found.</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = visibleUsers.map((user) => {
         const roleLabel = getRoleLabel(user.role);
         const roleClass = getRoleClass(user.role);
         const statusLabel = getStatusLabel(user.status);
@@ -413,12 +430,19 @@
     closeRolePicker();
     try {
       const user = await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(userId)}`));
-      const roles = [
+      const currentRole = normalizeRole(getCurrentUser().role);
+      const allRoles = [
         { value: 'super-admin', label: 'Super Admin', icon: '★' },
         { value: 'admin', label: 'Admin', icon: '⚙' },
         { value: 'manager', label: 'Manager', icon: '◆' },
         { value: 'cashier', label: 'Cashier', icon: '●' },
       ];
+      if (currentRole !== 'super-admin' && normalizeRole(user.role) === 'super-admin') {
+        throw new Error('Only a super admin can modify a super admin account.');
+      }
+      const roles = currentRole === 'super-admin'
+        ? allRoles
+        : allRoles.filter((role) => role.value === 'manager' || role.value === 'cashier');
       const popover = document.createElement('div');
       popover.className = 'role-picker-popover';
       popover.setAttribute('role', 'dialog');

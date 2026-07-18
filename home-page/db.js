@@ -181,12 +181,6 @@ async function initDatabase() {
     const tableNames = tables.map((t) => Object.values(t)[0]);
     console.log('[DB] Existing tables:', tableNames.join(', '));
 
-    // Check if the flat tables (used by Node.js routes) exist
-    const requiredTables = ['users', 'products', 'transactions', 'transaction_items'];
-    for (const table of requiredTables) {
-      const [rows] = await pool.query(`SELECT COUNT(*) AS cnt FROM \`${table}\``);
-      console.log(`[DB] Table "${table}" has ${rows[0].cnt} rows`);
-    }
   } catch (error) {
     console.warn('[DB] Could not list tables:', error.message);
   }
@@ -284,53 +278,6 @@ async function initDatabase() {
       discount_id INT AUTO_INCREMENT PRIMARY KEY,
       discount_type VARCHAR(30) NOT NULL UNIQUE,
       discount_rate DECIMAL(5,2) NOT NULL DEFAULT 0
-    ) ENGINE=InnoDB`,
-    `CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(150) NOT NULL,
-      email VARCHAR(191) NOT NULL UNIQUE,
-      username VARCHAR(100) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      role VARCHAR(50) NOT NULL DEFAULT 'cashier',
-      status VARCHAR(20) NOT NULL DEFAULT 'active',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB`,
-    `CREATE TABLE IF NOT EXISTS products (
-      id VARCHAR(100) PRIMARY KEY,
-      name VARCHAR(150) NOT NULL,
-      sku VARCHAR(100) NOT NULL UNIQUE,
-      barcode VARCHAR(100) NOT NULL UNIQUE,
-      category VARCHAR(100) NOT NULL,
-      price DECIMAL(10,2) NOT NULL DEFAULT 0,
-      stock INT NOT NULL DEFAULT 0,
-      image VARCHAR(255) DEFAULT NULL,
-      description TEXT DEFAULT NULL,
-      cost DECIMAL(10,2) NOT NULL DEFAULT 0,
-      threshold INT NOT NULL DEFAULT 0,
-      status VARCHAR(20) NOT NULL DEFAULT 'active',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB`,
-    `CREATE TABLE IF NOT EXISTS transactions (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      payment_method VARCHAR(50) DEFAULT 'Unknown',
-      subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
-      discount DECIMAL(10,2) NOT NULL DEFAULT 0,
-      tax DECIMAL(10,2) NOT NULL DEFAULT 0,
-      total DECIMAL(10,2) NOT NULL DEFAULT 0
-    ) ENGINE=InnoDB`,
-    `CREATE TABLE IF NOT EXISTS transaction_items (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      transaction_id INT NOT NULL,
-      product_id VARCHAR(100) NOT NULL,
-      name VARCHAR(150) NOT NULL,
-      sku VARCHAR(100) NOT NULL,
-      unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-      quantity INT NOT NULL DEFAULT 1,
-      line_total DECIMAL(10,2) NOT NULL DEFAULT 0,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_tx_items_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(id)
     ) ENGINE=InnoDB`
   ];
 
@@ -339,9 +286,9 @@ async function initDatabase() {
   }
 
 
-  await pool.query("INSERT IGNORE INTO role (role_type) VALUES ('cashier'), ('manager'), ('admin'), ('super_admin')");
-  await pool.query("INSERT IGNORE INTO category (name, status) VALUES ('General', 'active'), ('Beverages', 'active'), ('Bakery', 'active'), ('Produce', 'active'), ('Dairy', 'active'), ('Snacks', 'active'), ('Household', 'active'), ('Electronics', 'active')");
-  await pool.query("INSERT IGNORE INTO discount_eligibility (discount_type, discount_rate) VALUES ('Senior', 20.00), ('PWD', 20.00), ('Student', 20.00)");
+  await pool.query(`INSERT INTO role (role_id, role_type) VALUES
+    (1, 'cashier'), (2, 'manager'), (3, 'admin'), (4, 'super_admin')
+    ON DUPLICATE KEY UPDATE role_type = VALUES(role_type)`);
   console.log('MySQL schema initialized');
 }
 

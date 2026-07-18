@@ -480,6 +480,34 @@ app.put('/api/auth/users/:id', checkAuth, async (req, res) => {
   const updates = [];
   const values = [];
 
+  try {
+    const actorUserId = Number(req.headers['x-pos-user-id']);
+    const actor = Number.isInteger(actorUserId) && actorUserId > 0
+      ? await db.get('SELECT role FROM users WHERE id = ?', [actorUserId])
+      : null;
+    const target = await db.get('SELECT role FROM users WHERE id = ?', [id]);
+    const actorRole = normalizeRoleValue(actor?.role, '');
+    const targetRole = normalizeRoleValue(target?.role, '');
+    const requestedRole = req.body.role === undefined ? '' : normalizeRoleValue(req.body.role, '');
+
+    if (!target) return res.status(404).json({ error: 'User not found.' });
+    if (!['admin', 'super-admin'].includes(actorRole)) {
+      return res.status(403).json({ error: 'You do not have permission to manage accounts.' });
+    }
+    if (targetRole === 'super-admin' && actorRole !== 'super-admin') {
+      return res.status(403).json({ error: 'Only a super admin can modify a super admin account.' });
+    }
+    if (actorRole === 'admin' && !['manager', 'cashier'].includes(targetRole)) {
+      return res.status(403).json({ error: 'Admins can only manage manager and cashier accounts.' });
+    }
+    if (actorRole === 'admin' && requestedRole && !['manager', 'cashier'].includes(requestedRole)) {
+      return res.status(403).json({ error: 'Admins can only assign manager or cashier roles.' });
+    }
+  } catch (error) {
+    console.error('[USER-UPDATE] Authorization failed:', error.message);
+    return res.status(500).json({ error: 'Unable to authorize user update.' });
+  }
+
   if (req.body.fullName !== undefined) {
     updates.push('full_name = ?');
     values.push(String(req.body.fullName || '').trim());
