@@ -790,11 +790,25 @@
     closeProfileModal();
     injectProfileModalStyles();
     let user = getCurrentUser();
-    try {
-      user = { ...user, ...(await fetchJson(phpApi('auth/profile.php'))) };
-    } catch (error) {
-      showDashboardToast(error.message || 'Unable to load the account profile.', 'error');
-      return;
+    if (user.isLocalAccount) {
+      user = {
+        ...user,
+        branchLocation: 'Offline workstation',
+        employmentStatus: 'Local access',
+        lastLogin: user.loggedAt,
+        devices: [],
+        permissions: [
+          { key: 'local_dashboard', label: 'Access local dashboard' },
+          { key: 'local_inventory', label: 'View cached inventory' },
+        ],
+      };
+    } else {
+      try {
+        user = { ...user, ...(await fetchJson(phpApi('auth/profile.php'))) };
+      } catch (error) {
+        showDashboardToast(error.message || 'Unable to load the account profile.', 'error');
+        return;
+      }
     }
     const role = normalizeRole(user.role);
     const roleLabel = getRoleLabel(role);
@@ -844,6 +858,12 @@
     phoneRow.className = 'profile-info-row';
     phoneRow.innerHTML = '<span class="profile-info-label">Phone number</span><div class="profile-inline-edit"><input type="tel" autocomplete="tel" aria-label="Phone number"><button class="profile-btn" type="button">Save</button></div>';
     phoneRow.querySelector('input').value = profile.phone || '';
+    if (profile.isLocalAccount) {
+      phoneRow.querySelector('input').disabled = true;
+      phoneRow.querySelector('input').placeholder = 'Unavailable offline';
+      phoneRow.querySelector('button').disabled = true;
+      phoneRow.querySelector('button').textContent = 'Offline';
+    }
     phoneRow.querySelector('button').addEventListener('click', async () => {
       const phone = phoneRow.querySelector('input').value.trim();
       const saveButton = phoneRow.querySelector('button');
@@ -863,6 +883,12 @@
     security.className = 'profile-card wide';
     security.innerHTML = '<h3 class="profile-card-title">Security</h3><div class="profile-security-actions"><button class="profile-btn" data-action="pin" type="button">Change PIN</button><button class="profile-btn" data-action="password" type="button">Change Password</button></div><div class="profile-security-editor"></div><div class="profile-info-list"></div><div class="profile-devices"></div>';
     security.querySelector('.profile-info-list').append(makeProfileInfoRow('Last login', profile.lastLogin ? formatTimestamp(profile.lastLogin) : 'First recorded login'));
+    if (profile.isLocalAccount) {
+      security.querySelectorAll('[data-action]').forEach((button) => {
+        button.disabled = true;
+        button.title = 'Security changes require the database connection.';
+      });
+    }
     security.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => {
       const isPassword = button.dataset.action === 'password';
       const editor = security.querySelector('.profile-security-editor');

@@ -130,6 +130,22 @@ function getUserByIdentifier(identifier) {
   });
 }
 
+const OFFLINE_ADMIN = Object.freeze({
+  id: 'local-admin',
+  fullName: 'Local Administrator',
+  email: 'localadmin@markstock.local',
+  username: 'localadmin',
+  password: 'Jumong09',
+  role: 'admin',
+  isLocalAccount: true,
+});
+
+function getOfflineAdmin(identifier, password) {
+  const normalized = String(identifier || '').trim().toLowerCase();
+  const matchesIdentifier = normalized === OFFLINE_ADMIN.username || normalized === OFFLINE_ADMIN.email;
+  return matchesIdentifier && String(password) === OFFLINE_ADMIN.password ? { ...OFFLINE_ADMIN } : null;
+}
+
 function normalizeRoleValue(role, fallback = "cashier") {
   const value = String(role || "").trim().toLowerCase();
   if (!value) return fallback;
@@ -191,6 +207,7 @@ loginForm.addEventListener("submit", async (e) => {
 
   let user = getUserByIdentifier(identifier);
   let backendUser = null;
+  const offlineAdmin = getOfflineAdmin(identifier, password);
 
   try {
     backendUser = await window.authApi?.loginWithBackend?.(identifier, password);
@@ -215,7 +232,9 @@ loginForm.addEventListener("submit", async (e) => {
       localStorage.setItem("posUsers", JSON.stringify(storedUsers));
     }
   } catch (error) {
-    if (!user || String(user.password || "") !== String(password)) {
+    if (offlineAdmin) {
+      user = offlineAdmin;
+    } else if (!user || String(user.password || "") !== String(password)) {
       showFieldError(emailInput, "Invalid login credentials. Please try again.");
       showFieldError(passwordInput, "Invalid login credentials.");
       return;
@@ -233,10 +252,12 @@ loginForm.addEventListener("submit", async (e) => {
   try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setCurrentUser({
+      id: user.id,
       fullName: user.fullName || user.full_name || user.name || "",
       email: user.email,
       username: user.username,
       role: normalizedRole,
+      isLocalAccount: Boolean(user.isLocalAccount),
       loggedAt: new Date().toISOString(),
     });
 

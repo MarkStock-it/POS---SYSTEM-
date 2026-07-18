@@ -62,7 +62,9 @@ async function makeApiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const message = typeof payload === 'object' && payload ? payload.error || 'Request failed.' : String(payload || 'Request failed.');
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
