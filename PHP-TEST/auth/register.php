@@ -8,12 +8,31 @@ $email = strtolower(trim((string) ($data['email'] ?? '')));
 $username = strtolower(trim((string) ($data['username'] ?? explode('@', $email)[0])));
 $password = (string) ($data['password'] ?? '');
 $role = strtolower(trim((string) ($data['role'] ?? 'cashier')));
+$phone = trim((string) ($data['phone'] ?? ''));
+$branchLocation = trim((string) ($data['branchLocation'] ?? ''));
+$dateHired = trim((string) ($data['dateHired'] ?? ''));
+$employmentStatus = strtolower(trim((string) ($data['employmentStatus'] ?? 'active')));
+$pin = (string) ($data['pin'] ?? '');
 
-if ($fullName === '' || $email === '' || $password === '') {
+if ($fullName === '' || $email === '' || $username === '' || $password === '' || $phone === '' || $branchLocation === '' || $dateHired === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'Full name, email, and password are required.']);
+    echo json_encode(['error' => 'Full name, email, username, phone, branch, hire date, and password are required.']);
     exit;
 }
+if (!preg_match('/^[a-zA-Z0-9_.-]{3,100}$/', $username)) {
+    http_response_code(422); echo json_encode(['error' => 'Username format is invalid.']); exit;
+}
+if (!preg_match('/^[0-9+()\-\s]{7,30}$/', $phone)) {
+    http_response_code(422); echo json_encode(['error' => 'Phone number is invalid.']); exit;
+}
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateHired)) {
+    http_response_code(422); echo json_encode(['error' => 'Date hired is invalid.']); exit;
+}
+if ($pin !== '' && !preg_match('/^[0-9]{4,6}$/', $pin)) {
+    http_response_code(422); echo json_encode(['error' => 'PIN must contain 4 to 6 digits.']); exit;
+}
+$allowedEmploymentStatuses = ['active', 'probationary', 'part-time', 'on-leave', 'inactive'];
+if (!in_array($employmentStatus, $allowedEmploymentStatuses, true)) $employmentStatus = 'active';
 
 $roleType = in_array($role, ['manager', 'admin', 'super_admin', 'super-admin'], true) ? ($role === 'super-admin' ? 'super_admin' : $role) : 'cashier';
 
@@ -29,8 +48,10 @@ if (!$roleRow) {
 }
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
-$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`) VALUES (?, ?, ?, "active", ?, ?)');
-$stmt->bind_param('ssiss', $fullName, $hash, $roleRow['role_id'], $email, $username);
+$pinHash = $pin === '' ? null : password_hash($pin, PASSWORD_DEFAULT);
+$accountStatus = $employmentStatus === 'inactive' ? 'inactive' : 'active';
+$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`, `phone`, `branch_location`, `date_hired`, `employment_status`, `pin_hash`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+$stmt->bind_param('ssissssssss', $fullName, $hash, $roleRow['role_id'], $accountStatus, $email, $username, $phone, $branchLocation, $dateHired, $employmentStatus, $pinHash);
 
 try {
     $stmt->execute();
@@ -54,4 +75,8 @@ echo json_encode([
     'email' => $email,
     'username' => $username,
     'role' => $responseRole,
+    'phone' => $phone,
+    'branchLocation' => $branchLocation,
+    'dateHired' => $dateHired,
+    'employmentStatus' => $employmentStatus,
 ]);

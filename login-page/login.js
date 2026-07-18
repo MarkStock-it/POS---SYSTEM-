@@ -240,6 +240,8 @@ loginForm.addEventListener("submit", async (e) => {
       showFieldError(emailInput, "Invalid login credentials. Please try again.");
       showFieldError(passwordInput, "Invalid login credentials.");
       return;
+    } else {
+      user = { ...user, isLocalAccount: true };
     }
   }
 
@@ -260,6 +262,10 @@ loginForm.addEventListener("submit", async (e) => {
       username: user.username,
       role: normalizedRole,
       isLocalAccount: Boolean(user.isLocalAccount),
+      phone: user.phone || "",
+      branchLocation: user.branchLocation || "",
+      dateHired: user.dateHired || "",
+      employmentStatus: user.employmentStatus || "active",
       loggedAt: new Date().toISOString(),
     });
 

@@ -77,10 +77,10 @@ async function loginWithBackend(identifier, password) {
   });
 }
 
-async function registerWithBackend({ fullName, email, username, password, role }) {
+async function registerWithBackend({ fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin }) {
   return makeApiRequest('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ fullName, email, username, password, role }),
+    body: JSON.stringify({ fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin }),
   });
 }
 

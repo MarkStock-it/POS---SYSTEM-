@@ -53,6 +53,34 @@
         </div>
 
         <div class="form-group">
+          <label for="username"><span>Username</span></label>
+          <div class="input-wrapper"><input id="username" type="text" placeholder="Enter a unique username" autocomplete="username" minlength="3" maxlength="100" required aria-invalid="false" aria-describedby="usernameError" /></div>
+          <span class="error-message" id="usernameError"></span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="phone"><span>Phone Number</span></label>
+            <div class="input-wrapper"><input id="phone" type="tel" placeholder="+63 900 000 0000" autocomplete="tel" maxlength="30" required aria-invalid="false" aria-describedby="phoneError" /></div>
+            <span class="error-message" id="phoneError"></span>
+          </div>
+          <div class="form-group">
+            <label for="branchLocation"><span>Branch / Store</span></label>
+            <div class="input-wrapper"><input id="branchLocation" type="text" placeholder="Main Branch" maxlength="150" required aria-invalid="false" aria-describedby="branchLocationError" /></div>
+            <span class="error-message" id="branchLocationError"></span>
+          </div>
+          <div class="form-group">
+            <label for="dateHired"><span>Date Hired</span></label>
+            <div class="input-wrapper"><input id="dateHired" type="date" required aria-invalid="false" aria-describedby="dateHiredError" /></div>
+            <span class="error-message" id="dateHiredError"></span>
+          </div>
+          <div class="form-group">
+            <label for="employmentStatus"><span>Employment Status</span></label>
+            <div class="input-wrapper"><select id="employmentStatus" required><option value="active">Active</option><option value="probationary">Probationary</option><option value="part-time">Part-time</option><option value="on-leave">On leave</option><option value="inactive">Inactive</option></select></div>
+          </div>
+        </div>
+
+        <div class="form-group">
           <label for="password"><span>Password</span></label>
           <div class="input-wrapper">
             <input id="password" type="password" placeholder="Enter your password (min 6 characters)" autocomplete="new-password" required aria-invalid="false" aria-describedby="passwordError" />
@@ -100,6 +128,12 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label for="pin"><span>Employee PIN <small>(optional)</small></span></label>
+          <div class="input-wrapper"><input id="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" placeholder="4 to 6 digits" autocomplete="new-password" aria-invalid="false" aria-describedby="pinError" /></div>
+          <span class="error-message" id="pinError"></span>
+        </div>
+
         <button type="submit" class="register-button" id="registerButton">
           <span class="button-text">Create Account</span>
           <div class="spinner" style="display: none"></div>
@@ -119,11 +153,13 @@
     </div>
   </div>
 
+  <button type="button" class="back-dashboard-button" id="backDashboardButton" aria-label="Return to dashboard">← Back to dashboard</button>
+
   <div class="success-modal" id="successModal">
     <div class="success-modal-content">
       <div class="success-icon">✓</div>
       <h2>Account Created!</h2>
-      <p>Your account has been created successfully. Redirecting to login...</p>
+      <p>Your account has been created successfully. Finishing setup...</p>
       <div class="progress-bar">
         <div class="progress-bar-fill"></div>
       </div>
@@ -132,8 +168,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="../auth-api.js"></script>
+  <script src="../auth-api.js?v=3"></script>
   <script src="../theme-utils.js"></script>
-  <script src="register.js"></script>
+  <script src="register.js?v=2"></script>
 </body>
 </html>

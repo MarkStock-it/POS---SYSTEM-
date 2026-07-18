@@ -4,6 +4,12 @@
 const registerForm = document.getElementById("registerForm");
 const fullNameInput = document.getElementById("fullName");
 const emailInput = document.getElementById("email");
+const usernameInput = document.getElementById("username");
+const phoneInput = document.getElementById("phone");
+const branchLocationInput = document.getElementById("branchLocation");
+const dateHiredInput = document.getElementById("dateHired");
+const employmentStatusInput = document.getElementById("employmentStatus");
+const pinInput = document.getElementById("pin");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 const togglePasswordBtn = document.getElementById("togglePassword");
@@ -13,6 +19,7 @@ const loginButton = document.getElementById("loginButton");
 const roleInput = document.getElementById("role");
 const successModal = document.getElementById("successModal");
 const toast = document.getElementById("toast");
+const backDashboardButton = document.getElementById("backDashboardButton");
 
 // ============================================
 // PASSWORD TOGGLE
@@ -46,7 +53,7 @@ function validateFullName(name) {
 }
 
 function validateEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$|^[a-zA-Z0-9_]{3,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
@@ -57,6 +64,10 @@ function validatePassword(password) {
 function validatePasswordMatch(password, confirmPassword) {
   return password === confirmPassword && password.length >= 6;
 }
+
+function validateUsername(username) { return /^[a-zA-Z0-9_.-]{3,100}$/.test(username); }
+function validatePhone(phone) { return /^[0-9+()\-\s]{7,30}$/.test(phone); }
+function validatePin(pin) { return pin === "" || /^[0-9]{4,6}$/.test(pin); }
 
 function clearFieldError(field) {
   const formGroup = field.closest(".form-group");
@@ -186,9 +197,10 @@ function setStoredUsers(users) {
   localStorage.setItem("posUsers", JSON.stringify(users));
 }
 
-function userExists(email) {
+function userExists(email, username) {
   const normalizedEmail = email.trim().toLowerCase();
-  return getStoredUsers().some((user) => String(user.email || "").toLowerCase() === normalizedEmail);
+  const normalizedUsername = username.trim().toLowerCase();
+  return getStoredUsers().some((user) => String(user.email || "").toLowerCase() === normalizedEmail || String(user.username || "").toLowerCase() === normalizedUsername);
 }
 
 function createUser(payload) {
@@ -200,6 +212,12 @@ function createUser(payload) {
     username: payload.username || payload.email,
     password: payload.password,
     role: payload.role || "cashier",
+    phone: payload.phone || "",
+    branchLocation: payload.branchLocation || "",
+    dateHired: payload.dateHired || "",
+    employmentStatus: payload.employmentStatus || "active",
+    pin: payload.pin || "",
+    isLocalAccount: Boolean(payload.isLocalAccount),
     createdAt: payload.createdAt || new Date().toISOString(),
   };
 
@@ -216,6 +234,12 @@ registerForm.addEventListener("submit", async (e) => {
 
   const fullName = fullNameInput.value.trim();
   const email = emailInput.value.trim();
+  const username = usernameInput.value.trim();
+  const phone = phoneInput.value.trim();
+  const branchLocation = branchLocationInput.value.trim();
+  const dateHired = dateHiredInput.value;
+  const employmentStatus = employmentStatusInput.value;
+  const pin = pinInput.value;
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
   const role = roleInput.value || "cashier";
@@ -243,6 +267,12 @@ registerForm.addEventListener("submit", async (e) => {
     emailInput.focus();
     return;
   }
+
+  if (!validateUsername(username)) { showFieldError(usernameInput, "Use at least 3 letters, numbers, dots, dashes, or underscores"); usernameInput.focus(); return; }
+  if (!validatePhone(phone)) { showFieldError(phoneInput, "Enter a valid phone number"); phoneInput.focus(); return; }
+  if (!branchLocation) { showFieldError(branchLocationInput, "Branch or store is required"); branchLocationInput.focus(); return; }
+  if (!dateHired) { showFieldError(dateHiredInput, "Date hired is required"); dateHiredInput.focus(); return; }
+  if (!validatePin(pin)) { showFieldError(pinInput, "PIN must contain 4 to 6 digits"); pinInput.focus(); return; }
 
   // Validate password
   if (!password) {
@@ -275,38 +305,40 @@ registerForm.addEventListener("submit", async (e) => {
   spinner.style.display = "block";
 
   try {
-    if (userExists(email)) {
+    if (userExists(email, username)) {
       registerButton.classList.remove("loading");
       registerButton.disabled = false;
       spinner.style.display = "none";
-      showToast("An account with that email already exists.", "error");
+      showToast("That email or username already exists.", "error");
       emailInput.focus();
       return;
     }
 
-    await window.authApi?.registerWithBackend?.({
-      fullName,
-      email,
-      username: email.split("@")[0],
-      password,
-      role,
-    });
+    const registrationPayload = { fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin };
+    let creator = {};
+    try { creator = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {}; } catch (error) { creator = {}; }
+    let registeredOffline = false;
+    try {
+      await window.authApi?.registerWithBackend?.(registrationPayload);
+    } catch (backendError) {
+      if (!creator.isLocalAccount) throw backendError;
+      registeredOffline = true;
+    }
 
     createUser({
-      fullName,
-      email,
-      username: email.split("@")[0],
-      password,
-      role,
+      ...registrationPayload,
+      isLocalAccount: registeredOffline,
       createdAt: new Date().toISOString(),
     });
 
     successModal.classList.add("show");
-    showToast("Account created successfully! Redirecting to login...", "success");
+    showToast(`Account created successfully${creator.isLocalAccount ? ' and saved offline' : ''}!`, "success");
 
-    const loginUrl = new URL("../login-page/login.html", window.location.href).href;
+    const nextUrl = creator.fullName || creator.username
+      ? getDashboardUrl(creator.role)
+      : new URL("../login-page/login.html", window.location.href).href;
     setTimeout(() => {
-      window.location.href = loginUrl;
+      window.location.href = nextUrl;
     }, 800);
   } catch (error) {
     registerButton.classList.remove("loading");
@@ -321,6 +353,25 @@ registerForm.addEventListener("submit", async (e) => {
 // ============================================
 loginButton.addEventListener("click", () => {
   window.location.href = "../login-page/login.html";
+});
+
+[usernameInput, phoneInput, branchLocationInput, dateHiredInput, pinInput].forEach((input) => {
+  input.addEventListener("input", () => clearFieldError(input));
+  input.addEventListener("change", () => clearFieldError(input));
+});
+
+function getDashboardUrl(role) {
+  const normalized = String(role || '').toLowerCase().replace('_', '-');
+  const path = normalized === 'super-admin' ? '../New_Index/super-admin.html'
+    : normalized === 'admin' ? '../New_Index/admin.html'
+      : normalized === 'manager' ? '../New_Index/manager.html' : '../home-page/index.html';
+  return new URL(path, window.location.href).href;
+}
+
+backDashboardButton.addEventListener('click', () => {
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {}; } catch (error) { user = {}; }
+  window.location.href = user.role ? getDashboardUrl(user.role) : '../login-page/login.html';
 });
 
 // ============================================
@@ -370,6 +421,12 @@ window.addEventListener("load", () => {
   themeUtils.initTheme();
   document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
   // Auto-focus full name field
+  dateHiredInput.max = new Date().toISOString().slice(0, 10);
+  if (!dateHiredInput.value) dateHiredInput.value = new Date().toISOString().slice(0, 10);
+  try {
+    const settings = JSON.parse(localStorage.getItem('markstockSystemSettings') || '{}') || {};
+    if (!branchLocationInput.value && settings.branchName) branchLocationInput.value = settings.branchName;
+  } catch (error) { /* Keep the field empty when local settings are invalid. */ }
   fullNameInput.focus();
 });
 

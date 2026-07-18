@@ -819,8 +819,8 @@
     if (user.isLocalAccount) {
       user = {
         ...user,
-        branchLocation: 'Offline workstation',
-        employmentStatus: 'Local access',
+        branchLocation: user.branchLocation || 'Offline workstation',
+        employmentStatus: user.employmentStatus || 'Local access',
         lastLogin: user.loggedAt,
         devices: [],
         permissions: [

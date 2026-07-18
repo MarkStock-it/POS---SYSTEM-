@@ -171,7 +171,7 @@ body::before {
 
 .register-container {
   width: 100%;
-  max-width: 420px;
+  max-width: 720px;
   animation: slideUp var(--transition-slow) ease-out;
   position: relative;
   z-index: 1;
@@ -269,6 +269,37 @@ body::before {
 .register-form {
   width: 100%;
 }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+.form-group label small {
+  color: var(--color-text-secondary);
+  font-size: .72rem;
+  font-weight: 500;
+}
+
+.back-dashboard-button {
+  position: fixed;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 20;
+  padding: .72rem 1rem;
+  border: 1px solid rgba(255,255,255,.32);
+  border-radius: var(--radius-md);
+  color: #fff;
+  background: rgba(15,23,42,.42);
+  backdrop-filter: blur(12px);
+  font: 600 .84rem var(--font-family);
+  cursor: pointer;
+  transition: transform var(--transition-base), background var(--transition-base);
+}
+
+.back-dashboard-button:hover { transform: translateY(-2px); background: rgba(15,23,42,.62); }
+.back-dashboard-button:focus-visible { outline: 3px solid rgba(255,255,255,.28); outline-offset: 2px; }
 
 .form-group {
   margin-bottom: 1.25rem;
@@ -741,4 +772,7 @@ body::before {
     top: 1rem;
     right: 1rem;
   }
+
+  .form-grid { grid-template-columns: 1fr; gap: 0; }
+  .back-dashboard-button { position: static; align-self: flex-start; margin-top: 1rem; }
 }
