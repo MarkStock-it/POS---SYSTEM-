@@ -503,6 +503,14 @@
   .settings-status-row strong { color: var(--text-primary); text-align: right; }
   .settings-saved-indicator { display: flex; align-items: center; gap: 8px; margin-top: 15px; padding: 10px; border-radius: 9px; color: var(--status-green); background: rgba(16,185,129,.08); font-size: 10.5px; }
   .settings-saved-indicator.dirty { color: var(--status-amber); background: rgba(217,119,6,.08); }
+  .audit-view[hidden] { display: none !important; }
+  .audit-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+  .audit-search { width: min(330px, 100%); padding: 9px 11px; border: 1px solid var(--border-hairline); border-radius: 9px; outline: none; color: var(--text-primary); background: var(--bg-panel); }
+  .audit-search:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 3px var(--accent-gold-dim); }
+  .audit-table-wrap { overflow-x: auto; }
+  .audit-action { min-width: 260px; color: var(--text-primary); font-weight: 600; }
+  .audit-entity { color: var(--text-secondary); font-family: var(--font-display); font-size: 11px; }
+  .audit-empty { padding: 35px !important; text-align: center; color: var(--text-secondary); }
   @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
   @media (max-width: 620px) { .settings-fields { grid-template-columns: 1fr; } .settings-field.full { grid-column: auto; } .settings-actions { flex-wrap: wrap; } }
 </style>
@@ -520,26 +528,17 @@
     <nav class="nav-section">
       <div class="nav-section-label">Overview</div>
       <a class="nav-item active" id="dashboardNav" href="#dashboard" onclick="fnOpenDashboard(event)"><span class="nav-icon">▣</span> Dashboard</a>
-      <a class="nav-item"><span class="nav-icon">▥</span> System Reports</a>
-    </nav>
-
-    <nav class="nav-section">
-      <div class="nav-section-label">Account Management</div>
-      <a class="nav-item"><span class="nav-icon">⛉</span> Admins</a>
-      <a class="nav-item"><span class="nav-icon">⛉</span> Managers</a>
-      <a class="nav-item"><span class="nav-icon">⛉</span> Cashiers</a>
     </nav>
 
     <nav class="nav-section">
       <div class="nav-section-label">Operations</div>
-      <a class="nav-item"><span class="nav-icon">⇄</span> All Transactions</a>
       <a class="nav-item" href="../home-page/index.html?view=inventory"><span class="nav-icon">▦</span> Inventory Manager</a>
     </nav>
 
     <nav class="nav-section">
       <div class="nav-section-label">System</div>
       <a class="nav-item" id="settingsNav" href="#settings" onclick="fnOpenSettings(event)"><span class="nav-icon">⚙</span> Settings</a>
-      <a class="nav-item"><span class="nav-icon">▤</span> Audit Log</a>
+      <a class="nav-item" id="auditNav" href="#audit" onclick="fnOpenAuditLog(event)"><span class="nav-icon">▤</span> Audit Log</a>
     </nav>
 
     <div class="nav-footer">
@@ -667,6 +666,19 @@
       </section>
     </div>
 
+    <section class="panel" id="dashboardTransactionsPanel">
+      <div class="panel-header">
+        <div><div class="panel-title">Recent Transactions</div><div class="page-subtitle">Latest sales across all active workstations</div></div>
+        <button class="icon-btn" type="button" onclick="fnRefreshTransactions()" aria-label="Refresh transactions">↻</button>
+      </div>
+      <div class="audit-table-wrap">
+        <table>
+          <thead><tr><th>Transaction</th><th>Payment</th><th>Items</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+          <tbody id="superAdminTransactionsBody"><tr><td colspan="6" class="audit-empty">Loading transactions…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="settings-view" id="settingsView" aria-labelledby="settingsTitle" hidden>
       <div class="page-header">
         <div>
@@ -730,6 +742,17 @@
       </form>
     </section>
 
+    <section class="audit-view" id="auditView" aria-labelledby="auditTitle" hidden>
+      <div class="page-header">
+        <div><div class="page-title" id="auditTitle">Audit Log</div><div class="page-subtitle">Review account, inventory, transaction, and configuration activity</div></div>
+        <div class="audit-toolbar"><input class="audit-search" id="auditSearch" type="search" placeholder="Search actor, action, role, or entity"><button class="btn btn-ghost" type="button" onclick="fnExportAuditLog()">Export CSV</button><button class="btn btn-gold" type="button" onclick="fnLoadAuditLog()">Refresh</button></div>
+      </div>
+      <section class="panel">
+        <div class="panel-header"><div class="panel-title">Recorded Events</div><span class="page-subtitle" id="auditResultCount">Loading…</span></div>
+        <div class="audit-table-wrap"><table><thead><tr><th>Date & time</th><th>Actor</th><th>Role</th><th>Action</th><th>Entity</th></tr></thead><tbody id="auditLogTableBody"><tr><td colspan="5" class="audit-empty">Loading audit records…</td></tr></tbody></table></div>
+      </section>
+    </section>
+
   </main>
 
 <script>
@@ -741,6 +764,7 @@
     requireVoidApproval: true, lowStockNotifications: true, darkTheme: false,
   });
   let settingsDirty = false;
+  let auditRecords = [];
 
   function getSystemSettings() {
     try { return { ...DEFAULT_SYSTEM_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}') || {}) }; }
@@ -785,14 +809,23 @@
   }
   function setAdminView(view) {
     const settingsOpen = view === 'settings';
-    document.querySelectorAll('.main > :not(#settingsView)').forEach((node) => { node.hidden = settingsOpen; });
+    const auditOpen = view === 'audit';
+    document.querySelectorAll('.main > :not(#settingsView):not(#auditView)').forEach((node) => { node.hidden = settingsOpen || auditOpen; });
     document.getElementById('settingsView').hidden = !settingsOpen;
+    document.getElementById('auditView').hidden = !auditOpen;
     document.getElementById('settingsNav').classList.toggle('active', settingsOpen);
-    document.getElementById('dashboardNav').classList.toggle('active', !settingsOpen);
-    document.querySelector('.topbar-breadcrumb').textContent = settingsOpen ? '/ Settings' : '/ Dashboard';
+    document.getElementById('auditNav').classList.toggle('active', auditOpen);
+    document.getElementById('dashboardNav').classList.toggle('active', !settingsOpen && !auditOpen);
+    document.querySelector('.topbar-breadcrumb').textContent = settingsOpen ? '/ Settings' : auditOpen ? '/ Audit Log' : '/ Dashboard';
     if (settingsOpen) populateSettingsForm();
+    if (auditOpen) fnLoadAuditLog();
   }
   function fnOpenSettings(event) { event?.preventDefault(); history.replaceState(null, '', '#settings'); setAdminView('settings'); }
+  function fnOpenAuditLog(event) {
+    event?.preventDefault();
+    if (settingsDirty && !window.confirm('Discard unsaved settings changes?')) return;
+    history.replaceState(null, '', '#audit'); setAdminView('audit');
+  }
   function fnOpenDashboard(event) {
     event?.preventDefault();
     if (settingsDirty && !window.confirm('Discard unsaved settings changes?')) return;
@@ -810,6 +843,67 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
     window.roleDashboard?.showDashboardToast?.('Settings exported.', 'success');
   }
+  function fnRefreshTransactions() {
+    return window.roleDashboard?.loadTransactions?.('superAdminTransactionsBody');
+  }
+  function renderAuditLog() {
+    const query = String(document.getElementById('auditSearch')?.value || '').trim().toLowerCase();
+    const visible = auditRecords.filter((record) => !query || [record.actorName, record.actorRole, record.actionText, record.entityType, record.entityId].some((value) => String(value || '').toLowerCase().includes(query)));
+    const body = document.getElementById('auditLogTableBody');
+    body.replaceChildren();
+    document.getElementById('auditResultCount').textContent = `${visible.length} of ${auditRecords.length} event${auditRecords.length === 1 ? '' : 's'}`;
+    if (!visible.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 5; cell.className = 'audit-empty'; cell.textContent = query ? 'No audit events match your search.' : 'No audit events have been recorded.';
+      row.appendChild(cell); body.appendChild(row); return;
+    }
+    visible.forEach((record) => {
+      const row = document.createElement('tr');
+      const values = [
+        new Date(String(record.createdAt || '').replace(' ', 'T')).toLocaleString('en-PH'),
+        record.actorName || 'System', record.actorRole || '—', record.actionText || 'Performed an action',
+        [record.entityType, record.entityId].filter(Boolean).join(' #') || '—',
+      ];
+      values.forEach((value, index) => {
+        const cell = document.createElement('td'); cell.textContent = value;
+        if (index === 3) cell.className = 'audit-action';
+        if (index === 4) cell.className = 'audit-entity';
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+  }
+  async function fnLoadAuditLog() {
+    const body = document.getElementById('auditLogTableBody');
+    body.innerHTML = '<tr><td colspan="5" class="audit-empty">Loading audit records…</td></tr>';
+    const localRecords = window.roleDashboard?.getLocalAuditRecords?.() || [];
+    const currentUser = window.roleDashboard?.getCurrentUser?.() || {};
+    if (currentUser.isLocalAccount) {
+      auditRecords = localRecords;
+      renderAuditLog();
+      return;
+    }
+    try {
+      const url = new URL('../PHP-TEST/audit-log.php?limit=50', window.location.href).pathname + '?limit=50';
+      const remoteRecords = await window.roleDashboard.fetchJson(url);
+      auditRecords = [...(Array.isArray(remoteRecords) ? remoteRecords : []), ...localRecords]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      renderAuditLog();
+    } catch (error) {
+      auditRecords = localRecords;
+      renderAuditLog();
+    }
+  }
+  function fnExportAuditLog() {
+    if (!auditRecords.length) { window.roleDashboard?.showDashboardToast?.('There are no audit events to export.', 'warning'); return; }
+    const escapeCsv = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Date & time', 'Actor', 'Role', 'Action', 'Entity type', 'Entity ID'], ...auditRecords.map((record) => [record.createdAt, record.actorName, record.actorRole, record.actionText, record.entityType, record.entityId])];
+    const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(escapeCsv).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = `markstock-audit-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    window.roleDashboard?.showDashboardToast?.('Audit log exported.', 'success');
+  }
   function fnCreateAccount() { window.roleDashboard?.createAccount?.(); }
   function fnEditAccount(id, button) { window.roleDashboard?.editUser?.(id, button); }
   function fnSuspendAccount(id) { window.roleDashboard?.toggleUserStatus?.(id); }
@@ -819,7 +913,7 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
-<script src="role-dashboard.js?v=7"></script>
+<script src="role-dashboard.js?v=8"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
@@ -830,10 +924,12 @@
     await window.roleDashboard.loadDashboardSummary?.();
     window.roleDashboard.loadUsers?.('accountsTableBody');
     window.roleDashboard.loadActivityFeed?.('activityFeed');
+    fnRefreshTransactions();
     window.setInterval(() => window.roleDashboard.loadActivityFeed?.('activityFeed'), 30000);
     const settingsForm = document.getElementById('systemSettingsForm');
     settingsForm.addEventListener('input', () => setSettingsDirty(true));
     settingsForm.addEventListener('change', () => setSettingsDirty(true));
+    document.getElementById('auditSearch').addEventListener('input', renderAuditLog);
     settingsForm.addEventListener('submit', (event) => {
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;
@@ -845,7 +941,7 @@
       window.roleDashboard?.showDashboardToast?.('System settings saved locally.', 'success');
     });
     applySystemSettings(getSystemSettings());
-    setAdminView(location.hash === '#settings' ? 'settings' : 'dashboard');
+    setAdminView(location.hash === '#settings' ? 'settings' : location.hash === '#audit' ? 'audit' : 'dashboard');
   });
 </script>
 </body>

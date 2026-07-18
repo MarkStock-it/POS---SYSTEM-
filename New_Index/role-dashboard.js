@@ -202,8 +202,29 @@
     return normalized === 'suspended' || normalized === 'inactive' ? 'offline' : 'online';
   }
 
+  const LOCAL_AUDIT_KEY = 'markstockLocalAuditLog';
+  function getLocalAuditRecords() {
+    try {
+      const records = JSON.parse(localStorage.getItem(LOCAL_AUDIT_KEY) || '[]');
+      return Array.isArray(records) ? records : [];
+    } catch (error) { return []; }
+  }
+  function saveLocalAuditRecord(record) {
+    localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify([record, ...getLocalAuditRecords()].slice(0, 100)));
+  }
+
   async function recordActivity(actionText, entityType = '', entityId = '') {
     const user = getCurrentUser();
+    const localRecord = {
+      id: `local-${Date.now()}`,
+      actorName: user.fullName || user.username || user.email || 'Unknown user',
+      actorRole: normalizeRole(user.role), actionText, entityType, entityId: String(entityId || ''),
+      createdAt: new Date().toISOString(), local: true,
+    };
+    if (user.isLocalAccount) {
+      saveLocalAuditRecord(localRecord);
+      return;
+    }
     try {
       await fetchJson(phpApi('audit-log.php'), {
         method: 'POST',
@@ -217,6 +238,7 @@
         }),
       });
     } catch (error) {
+      saveLocalAuditRecord(localRecord);
       console.error('Failed to record activity:', error);
     }
   }
@@ -238,7 +260,9 @@
     const feed = document.getElementById(targetId);
     if (!feed) return;
     try {
-      const activities = await fetchJson(phpApi('audit-log.php', '?limit=12'));
+      const activities = getCurrentUser().isLocalAccount
+        ? getLocalAuditRecords().slice(0, 12)
+        : await fetchJson(phpApi('audit-log.php', '?limit=12'));
       feed.replaceChildren();
       if (!Array.isArray(activities) || !activities.length) {
         const empty = document.createElement('div');
@@ -318,6 +342,8 @@
       }).join('');
     } catch (error) {
       console.error('Failed to load transactions:', error);
+      const tableBody = document.getElementById(targetTableId);
+      if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="empty-state">Transactions are unavailable while the database is offline.</td></tr>';
     }
   }
 
@@ -1028,5 +1054,6 @@
     showDashboardToast,
     recordActivity,
     loadActivityFeed,
+    getLocalAuditRecords,
   };
 })();
