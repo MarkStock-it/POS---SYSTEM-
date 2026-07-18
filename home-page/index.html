@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Retail POS System</title>
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   
@@ -138,8 +138,9 @@
         <section class="inventory-main">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Inventory Management</p>
-              <h2>Catalog & Controls</h2>
+              <p class="eyebrow">Manager Workspace</p>
+              <h2>Inventory Control Center</h2>
+              <p class="inventory-intro">Review catalog health, update physical counts, and keep stock accurate.</p>
             </div>
             <div class="panel-actions">
               <button class="primary-button" type="button" onclick="openAddProductModal()">+ Add Product</button>
@@ -180,8 +181,8 @@
 
           <div class="inventory-table-toolbar">
             <div>
-              <strong>Physical stock count</strong>
-              <span id="stockChangesStatus">No unsaved counts</span>
+              <strong>Physical Stock Count</strong>
+              <span id="stockChangesStatus">Enter counted quantities below. No unsaved counts.</span>
             </div>
             <button class="primary-button stock-save-all" id="saveAllStockButton" type="button" onclick="saveAllCurrentStock()" disabled>Save Stock Counts</button>
           </div>
