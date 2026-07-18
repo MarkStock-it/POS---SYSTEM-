@@ -88,7 +88,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 2rem clamp(1rem, 6vw, 7rem);
   position: relative;
   overflow-y: auto;
@@ -150,11 +150,30 @@ body::before {
 
 .login-container {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   margin-right: auto;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 24px 70px rgba(49, 70, 47, 0.18);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
   animation: slideUp var(--transition-slow) ease-out;
   position: relative;
   z-index: 1;
+}
+
+html[data-theme="dark"] .login-container {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(17, 24, 39, 0.84);
+}
+
+html[data-theme="dark"] .login-header h1,
+html[data-theme="dark"] .login-header p,
+html[data-theme="dark"] .login-footer {
+  color: var(--color-text);
+  text-shadow: none;
 }
 
 @keyframes slideUp {
@@ -197,7 +216,7 @@ body::before {
 
 .login-header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.75rem;
 }
 
 @keyframes logoFloat {
@@ -227,12 +246,12 @@ body::before {
    CARD
    ============================================ */
 .login-card {
-  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
-  border-radius: var(--radius-xl);
-  padding: 2rem;
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--color-border);
-  backdrop-filter: blur(16px);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  border: 0;
+  backdrop-filter: none;
   transition: all var(--transition-base);
 }
 
@@ -622,8 +641,8 @@ body::before {
 
 .login-footer {
   text-align: center;
-  margin-top: 2rem;
-  margin-bottom: 3rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0;
   font-size: 0.75rem;
   color: #31462f;
   text-shadow: 0 1px 6px rgba(255, 255, 255, 0.8);
@@ -645,10 +664,13 @@ body::before {
   .login-container {
     max-width: 100%;
     margin-inline: auto;
+    padding: 1.35rem;
+    border-radius: 1.25rem;
   }
 
   .login-card {
     border: none;
+    padding: 0;
   }
 
   .login-header h1 {
