@@ -171,7 +171,7 @@ body::before {
 
 .register-container {
   width: 100%;
-  max-width: 720px;
+  max-width: 860px;
   animation: slideUp var(--transition-slow) ease-out;
   position: relative;
   z-index: 1;
@@ -268,13 +268,17 @@ body::before {
    ============================================ */
 .register-form {
   width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2rem;
+  align-items: start;
 }
 
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 1rem;
+  display: contents;
 }
+
+.register-form > .register-button { grid-column: 1 / -1; margin-top: .25rem; }
 
 .form-group label small {
   color: var(--color-text-secondary);
@@ -742,6 +746,11 @@ body::before {
   color: white;
 }
 
+@media (max-width: 720px) {
+  .register-form { grid-template-columns: 1fr; column-gap: 0; }
+  .register-container { max-width: 460px; }
+}
+
 /* ============================================
    RESPONSIVE DESIGN
    ============================================ */
@@ -774,5 +783,7 @@ body::before {
   }
 
   .form-grid { grid-template-columns: 1fr; gap: 0; }
+  .register-form { grid-template-columns: 1fr; column-gap: 0; }
+  .form-grid { display: contents; }
   .back-dashboard-button { position: static; align-self: flex-start; margin-top: 1rem; }
 }
