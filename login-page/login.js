@@ -130,20 +130,22 @@ function getUserByIdentifier(identifier) {
   });
 }
 
-const OFFLINE_ADMIN = Object.freeze({
-  id: 'local-admin',
-  fullName: 'Local Administrator',
-  email: 'localadmin@markstock.local',
-  username: 'localadmin',
+const OFFLINE_ACCOUNTS = Object.freeze([
+  { id: 'local-super-admin', fullName: 'Local Super Administrator', username: 'localsuperadmin', role: 'super-admin' },
+  { id: 'local-admin', fullName: 'Local Administrator', username: 'localadmin', role: 'admin' },
+  { id: 'local-manager', fullName: 'Local Manager', username: 'localmanager', role: 'manager' },
+  { id: 'local-cashier', fullName: 'Local Cashier', username: 'localcashier', role: 'cashier' },
+].map((account) => Object.freeze({
+  ...account,
+  email: `${account.username}@markstock.local`,
   password: 'Jumong09',
-  role: 'admin',
   isLocalAccount: true,
-});
+})));
 
-function getOfflineAdmin(identifier, password) {
+function getOfflineAccount(identifier, password) {
   const normalized = String(identifier || '').trim().toLowerCase();
-  const matchesIdentifier = normalized === OFFLINE_ADMIN.username || normalized === OFFLINE_ADMIN.email;
-  return matchesIdentifier && String(password) === OFFLINE_ADMIN.password ? { ...OFFLINE_ADMIN } : null;
+  const account = OFFLINE_ACCOUNTS.find((candidate) => normalized === candidate.username || normalized === candidate.email);
+  return account && String(password) === account.password ? { ...account } : null;
 }
 
 function normalizeRoleValue(role, fallback = "cashier") {
@@ -207,7 +209,7 @@ loginForm.addEventListener("submit", async (e) => {
 
   let user = getUserByIdentifier(identifier);
   let backendUser = null;
-  const offlineAdmin = getOfflineAdmin(identifier, password);
+  const offlineAccount = getOfflineAccount(identifier, password);
 
   try {
     backendUser = await window.authApi?.loginWithBackend?.(identifier, password);
@@ -232,8 +234,8 @@ loginForm.addEventListener("submit", async (e) => {
       localStorage.setItem("posUsers", JSON.stringify(storedUsers));
     }
   } catch (error) {
-    if (offlineAdmin) {
-      user = offlineAdmin;
+    if (offlineAccount) {
+      user = offlineAccount;
     } else if (!user || String(user.password || "") !== String(password)) {
       showFieldError(emailInput, "Invalid login credentials. Please try again.");
       showFieldError(passwordInput, "Invalid login credentials.");
