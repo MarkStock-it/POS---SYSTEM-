@@ -699,15 +699,17 @@ function renderInventoryTable() {
         <td>${product.sku} / ${product.barcode}</td>
         <td>${formatCurrency(product.price)}</td>
         <td>${product.stock}</td>
-        <td>
+        <td class="current-stock-cell">
           <div class="stock-check-control">
             <input id="currentStock-${product.id}" class="stock-check-input" data-product-id="${product.id}" type="number" min="0" step="1" value="${product.currentStock ?? ''}" placeholder="Enter count" aria-label="Current physical stock for ${product.name}" oninput="markCurrentStockChanged(this)" />
           </div>
           ${product.stockVariance === null || product.stockVariance === undefined ? '<small class="stock-check-note">Not checked</small>' : `<small class="stock-check-note ${product.stockVariance === 0 ? 'matches' : 'mismatch'}">Variance: ${product.stockVariance > 0 ? '+' : ''}${product.stockVariance}</small>`}
         </td>
-        <td class="table-actions">
-          <button class="table-button" type="button" onclick="editProduct('${product.id}')">Edit</button>
-          <button class="table-button danger" type="button" onclick="deleteProduct('${product.id}')">Delete</button>
+        <td class="actions-cell">
+          <div class="table-actions">
+            <button class="table-button" type="button" onclick="editProduct('${product.id}')">Edit</button>
+            <button class="table-button danger" type="button" onclick="deleteProduct('${product.id}')">Delete</button>
+          </div>
         </td>
       </tr>
     `)
