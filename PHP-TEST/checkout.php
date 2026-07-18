@@ -13,6 +13,7 @@ $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $items = $data['items'] ?? [];
 $paymentMethod = trim((string) ($data['paymentMethod'] ?? 'Unknown'));
 $discountPercent = (float) ($data['discountPercent'] ?? 0);
+$taxRate = max(0, min(100, (float) ($data['taxRate'] ?? 8)));
 $amountTendered = (float) ($data['amountTendered'] ?? 0);
 
 if (!is_array($items) || count($items) === 0) {
@@ -24,7 +25,7 @@ foreach ($items as $item) {
     $subtotal += (float) ($item['unitPrice'] ?? 0) * (int) ($item['quantity'] ?? 1);
 }
 $discount = max(0, min($discountPercent, 100)) * $subtotal / 100;
-$tax = round(($subtotal - $discount) * 0.08, 2);
+$tax = round(($subtotal - $discount) * ($taxRate / 100), 2);
 $total = round($subtotal - $discount + $tax, 2);
 $changeAmount = round(max(0, $amountTendered - $total), 2);
 

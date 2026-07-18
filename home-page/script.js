@@ -22,8 +22,14 @@ const state = {
 
 const fallbackImage = '/images/placeholder.svg';
 
+function getPosSettings() {
+  try { return JSON.parse(localStorage.getItem('markstockSystemSettings') || '{}') || {}; }
+  catch (error) { return {}; }
+}
+
 function formatCurrency(value) {
-  return `$${Number(value).toFixed(2)}`;
+  const currency = getPosSettings().currency || 'PHP';
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(Number(value) || 0);
 }
 
 function showToast(message, type = 'success') {
@@ -304,7 +310,7 @@ function getFilteredProducts() {
   return state.products.filter((product) => {
     const categoryMatch = state.selectedCategory === 'all' || product.category.toLowerCase() === state.selectedCategory;
     const stockMatch = state.activeStockFilter === 'all'
-      || (state.activeStockFilter === 'low' && product.stock > 0 && product.stock <= 10)
+      || (state.activeStockFilter === 'low' && product.stock > 0 && product.stock <= Number(getPosSettings().lowStockThreshold ?? 10))
       || (state.activeStockFilter === 'out' && product.stock === 0);
     const searchMatch = !searchValue || [product.name, product.sku, product.barcode, product.category]
       .some((field) => String(field).toLowerCase().includes(searchValue));
@@ -478,7 +484,8 @@ function renderCart() {
 function calculateTotals() {
   const subtotal = state.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const discount = (Number(state.discountPercent || 0) / 100) * subtotal;
-  const tax = Number(((subtotal - discount) * 0.08).toFixed(2));
+  const taxRate = Math.max(0, Math.min(100, Number(getPosSettings().taxRate ?? 8)));
+  const tax = Number(((subtotal - discount) * (taxRate / 100)).toFixed(2));
   const total = Number((subtotal - discount + tax).toFixed(2));
   return { subtotal, discount, tax, total };
 }
@@ -790,7 +797,8 @@ function renderInventoryCards() {
   document.getElementById('totalProductsCount').textContent = state.products.length;
   const uniqueCategories = new Set(state.products.map((product) => product.category.trim().toLowerCase()));
   document.getElementById('totalCategoriesCount').textContent = uniqueCategories.size;
-  document.getElementById('lowStockCount').textContent = state.products.filter((product) => product.stock > 0 && product.stock <= 10).length;
+  const lowStockThreshold = Number(getPosSettings().lowStockThreshold ?? 10);
+  document.getElementById('lowStockCount').textContent = state.products.filter((product) => product.stock > 0 && product.stock <= lowStockThreshold).length;
   document.getElementById('outOfStockCount').textContent = state.products.filter((product) => product.stock === 0).length;
 }
 
@@ -1141,6 +1149,7 @@ function processPayment(paymentMethod) {
   const payload = {
     paymentMethod,
     discountPercent: Number(state.discountPercent || 0),
+    taxRate: Number(getPosSettings().taxRate ?? 8),
     items: state.cart.map((item) => ({
       productId: item.productId,
       name: item.name,

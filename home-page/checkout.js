@@ -13,8 +13,14 @@ const checkoutState = {
 const checkoutScriptUrl = document.currentScript?.src || window.location.href;
 const checkoutApiUrl = new URL('../PHP-TEST/checkout.php', checkoutScriptUrl).pathname;
 
+function getPosSettings() {
+  try { return JSON.parse(localStorage.getItem('markstockSystemSettings') || '{}') || {}; }
+  catch (error) { return {}; }
+}
+
 function formatCurrency(value) {
-  return `$${Number(value).toFixed(2)}`;
+  const currency = getPosSettings().currency || 'PHP';
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(Number(value) || 0);
 }
 
 function showToast(message, type = 'success') {
@@ -169,7 +175,8 @@ function loadCheckoutData() {
 function calculateTotalsFromCart() {
   const subtotal = checkoutState.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const discount = (Number(checkoutState.discountPercent || 0) / 100) * subtotal;
-  const tax = Number(((subtotal - discount) * 0.08).toFixed(2));
+  const taxRate = Math.max(0, Math.min(100, Number(getPosSettings().taxRate ?? 8)));
+  const tax = Number(((subtotal - discount) * (taxRate / 100)).toFixed(2));
   const total = Number((subtotal - discount + tax).toFixed(2));
   return { subtotal, discount, tax, total };
 }
@@ -188,6 +195,7 @@ function submitCheckout() {
   const payload = {
     paymentMethod: checkoutState.paymentMethod,
     discountPercent: Number(checkoutState.discountPercent || 0),
+    taxRate: Number(getPosSettings().taxRate ?? 8),
     items: checkoutState.cart.map((item) => ({
       productId: item.productId,
       name: item.name,
