@@ -663,8 +663,267 @@
     showDashboardToast('You have no new notifications.', 'info');
   }
 
-  function openProfileMenu() {
-    showDashboardToast('Profile options are not available yet.', 'info');
+  const PROFILE_STYLE_ID = 'accountProfileModalStyles';
+  let profileModalReturnFocus = null;
+
+  function injectProfileModalStyles() {
+    if (document.getElementById(PROFILE_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = PROFILE_STYLE_ID;
+    style.textContent = `
+      body.profile-modal-open { overflow: hidden; }
+      .profile-modal-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; background: rgba(4, 10, 20, .72); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); opacity: 0; transition: opacity .18s ease; }
+      .profile-modal-backdrop.open { opacity: 1; }
+      .profile-modal { width: min(920px, 100%); max-height: min(88vh, 820px); overflow: hidden; display: flex; flex-direction: column; color: var(--text-primary, #e9eef7); background: var(--surface, #111a29); border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 14px; box-shadow: 0 28px 80px rgba(0,0,0,.48); transform: translateY(12px) scale(.985); transition: transform .18s ease; }
+      .profile-modal-backdrop.open .profile-modal { transform: none; }
+      .profile-modal-header { position: relative; display: flex; align-items: center; gap: 16px; padding: 22px 24px; border-bottom: 1px solid var(--border-hairline, rgba(255,255,255,.1)); background: linear-gradient(135deg, rgba(37,99,235,.16), transparent 58%); }
+      .profile-modal-avatar { width: 68px; height: 68px; flex: 0 0 68px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--accent, #4f8cff); background: rgba(79,140,255,.14); color: var(--text-primary, #fff); font: 700 20px var(--font-display, inherit); }
+      .profile-modal-identity { min-width: 0; }
+      .profile-modal-name { margin: 0 0 4px; font: 700 21px var(--font-display, inherit); }
+      .profile-modal-username { color: var(--text-tertiary, #91a0b7); font-size: 12px; }
+      .profile-modal-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+      .profile-chip { padding: 4px 8px; border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 999px; color: var(--text-secondary, #c7d0df); background: rgba(255,255,255,.035); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+      .profile-chip.role { color: #9ec2ff; border-color: rgba(79,140,255,.35); background: rgba(79,140,255,.1); }
+      .profile-modal-close { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 8px; color: var(--text-secondary, #c7d0df); background: transparent; font-size: 22px; cursor: pointer; }
+      .profile-modal-close:hover { color: var(--text-primary, #fff); border-color: var(--border-hairline, rgba(255,255,255,.1)); background: rgba(255,255,255,.05); }
+      .profile-modal-body { overflow: auto; padding: 20px 24px 24px; }
+      .profile-modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .profile-card { padding: 17px; border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 10px; background: rgba(255,255,255,.025); }
+      .profile-card.wide { grid-column: 1 / -1; }
+      .profile-card-title { margin: 0 0 14px; color: var(--text-primary, #fff); font: 700 12px var(--font-display, inherit); letter-spacing: .08em; text-transform: uppercase; }
+      .profile-info-list { display: grid; gap: 11px; }
+      .profile-info-row { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; min-height: 29px; }
+      .profile-info-label { color: var(--text-tertiary, #91a0b7); font-size: 11px; }
+      .profile-info-value { min-width: 0; color: var(--text-secondary, #d5dbe6); font-size: 12px; overflow-wrap: anywhere; }
+      .profile-inline-edit { display: flex; align-items: center; gap: 7px; }
+      .profile-inline-edit input { min-width: 0; width: 100%; padding: 8px 9px; border: 1px solid var(--border-hairline, rgba(255,255,255,.12)); border-radius: 6px; outline: none; color: var(--text-primary, #fff); background: rgba(0,0,0,.18); font: inherit; }
+      .profile-inline-edit input:focus { border-color: var(--accent, #4f8cff); box-shadow: 0 0 0 3px rgba(79,140,255,.12); }
+      .profile-btn { border: 1px solid var(--border-hairline, rgba(255,255,255,.12)); border-radius: 6px; padding: 8px 11px; color: var(--text-secondary, #d5dbe6); background: rgba(255,255,255,.04); font: 600 11px inherit; cursor: pointer; white-space: nowrap; }
+      .profile-btn:hover { color: #fff; border-color: rgba(79,140,255,.45); background: rgba(79,140,255,.12); }
+      .profile-security-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+      .profile-device { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-hairline, rgba(255,255,255,.08)); }
+      .profile-device-name { color: var(--text-secondary, #d5dbe6); font-size: 12px; font-weight: 600; }
+      .profile-device-meta, .profile-empty { margin-top: 3px; color: var(--text-tertiary, #91a0b7); font-size: 10px; }
+      .profile-unlink { color: #ff9b9b; }
+      .profile-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+      .profile-stat { padding: 12px; border-radius: 8px; background: rgba(79,140,255,.07); border: 1px solid rgba(79,140,255,.12); }
+      .profile-stat-value { color: var(--text-primary, #fff); font: 700 18px var(--font-display, inherit); }
+      .profile-stat-label { margin-top: 4px; color: var(--text-tertiary, #91a0b7); font-size: 10px; }
+      .profile-permissions { display: flex; flex-wrap: wrap; gap: 7px; }
+      .profile-permission { padding: 6px 9px; border-radius: 6px; color: #b8cff8; background: rgba(79,140,255,.09); border: 1px solid rgba(79,140,255,.18); font-size: 10px; }
+      @media (max-width: 680px) { .profile-modal-backdrop { padding: 10px; } .profile-modal { max-height: 94vh; } .profile-modal-grid { grid-template-columns: 1fr; } .profile-card.wide { grid-column: auto; } .profile-modal-header, .profile-modal-body { padding-left: 17px; padding-right: 17px; } .profile-info-row { grid-template-columns: 96px minmax(0,1fr); } .profile-stat-grid { grid-template-columns: 1fr; } }
+      @media (prefers-reduced-motion: reduce) { .profile-modal-backdrop, .profile-modal { transition: none; } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function profileInitials(user) {
+    const source = user.fullName || user.username || user.email || 'User';
+    return source.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
+  }
+
+  function profilePermissions(role) {
+    const permissions = {
+      'super-admin': ['Full system access', 'Manage admins', 'Manage branches', 'Manage staff', 'View reports', 'Configure security'],
+      admin: ['Manage managers', 'Manage cashiers', 'View transactions', 'Generate reports', 'Manage inventory'],
+    };
+    return permissions[normalizeRole(role)] || [];
+  }
+
+  function closeProfileModal() {
+    const backdrop = document.querySelector('.profile-modal-backdrop');
+    if (!backdrop) return;
+    backdrop.classList.remove('open');
+    document.body.classList.remove('profile-modal-open');
+    window.setTimeout(() => backdrop.remove(), 180);
+    profileModalReturnFocus?.focus?.();
+  }
+
+  function makeProfileInfoRow(label, value) {
+    const row = document.createElement('div');
+    row.className = 'profile-info-row';
+    const key = document.createElement('span');
+    key.className = 'profile-info-label';
+    key.textContent = label;
+    const content = document.createElement('span');
+    content.className = 'profile-info-value';
+    content.textContent = value || 'Not provided';
+    row.append(key, content);
+    return row;
+  }
+
+  async function loadProfileStats(container, user) {
+    const role = normalizeRole(user.role);
+    let values = role === 'cashier'
+      ? [['—', 'Transactions processed'], ['—', 'Items sold'], ['—', 'Sales handled']]
+      : [['—', 'Approvals made'], ['—', 'Reports generated'], ['—', 'Actions recorded']];
+    try {
+      if (role === 'cashier') {
+        const transactions = await fetchJson(phpApi('transactions.php'));
+        const own = Array.isArray(transactions) ? transactions.filter((item) => !item.cashier_id || String(item.cashier_id) === String(user.id)) : [];
+        values = [[own.length, 'Transactions processed'], [own.reduce((sum, item) => sum + Number(item.item_count || 0), 0), 'Items sold'], [formatCurrency(own.reduce((sum, item) => sum + Number(item.total || 0), 0)), 'Sales handled']];
+      } else {
+        const activities = await fetchJson(phpApi('audit-log.php', '?limit=100'));
+        const own = Array.isArray(activities) ? activities.filter((item) => String(item.actorUserId || item.actor_user_id || '') === String(user.id || '')) : [];
+        values = [[own.filter((item) => /approv/i.test(item.actionText || '')).length, 'Approvals made'], [own.filter((item) => /report/i.test(item.actionText || '')).length, 'Reports generated'], [own.length, 'Actions recorded']];
+      }
+    } catch (error) {
+      console.error('Unable to load profile activity summary:', error);
+    }
+    container.replaceChildren(...values.map(([value, label]) => {
+      const stat = document.createElement('div');
+      stat.className = 'profile-stat';
+      const number = document.createElement('div');
+      number.className = 'profile-stat-value';
+      number.textContent = String(value);
+      const text = document.createElement('div');
+      text.className = 'profile-stat-label';
+      text.textContent = label;
+      stat.append(number, text);
+      return stat;
+    }));
+  }
+
+  async function openProfileMenu() {
+    closeProfileModal();
+    injectProfileModalStyles();
+    let user = getCurrentUser();
+    if (user.id) {
+      try {
+        const account = await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(user.id)}`));
+        user = { ...user, ...(account || {}) };
+      } catch (error) {
+        console.error('Unable to refresh account profile:', error);
+      }
+    }
+    const role = normalizeRole(user.role);
+    const roleLabel = getRoleLabel(role);
+    let savedProfile = {};
+    try {
+      savedProfile = JSON.parse(localStorage.getItem(`posProfile:${user.id || user.username || 'current'}`) || '{}') || {};
+    } catch (error) {
+      savedProfile = {};
+    }
+    const devices = Array.isArray(savedProfile.devices) ? savedProfile.devices : [];
+    const profile = { ...user, ...savedProfile };
+    profileModalReturnFocus = document.activeElement;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'profile-modal-backdrop';
+    const modal = document.createElement('section');
+    modal.className = 'profile-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'profileModalTitle');
+    modal.innerHTML = `
+      <header class="profile-modal-header">
+        <div class="profile-modal-avatar" aria-hidden="true"></div>
+        <div class="profile-modal-identity">
+          <h2 class="profile-modal-name" id="profileModalTitle"></h2>
+          <div class="profile-modal-username"></div>
+          <div class="profile-modal-meta"><span class="profile-chip role"></span><span class="profile-chip profile-branch"></span></div>
+        </div>
+        <button class="profile-modal-close" type="button" aria-label="Close account profile">×</button>
+      </header>
+      <div class="profile-modal-body"><div class="profile-modal-grid"></div></div>`;
+    modal.querySelector('.profile-modal-avatar').textContent = profileInitials(profile);
+    modal.querySelector('.profile-modal-name').textContent = profile.fullName || profile.username || 'MarkStock-it User';
+    modal.querySelector('.profile-modal-username').textContent = `@${profile.username || String(profile.email || 'user').split('@')[0]}`;
+    modal.querySelector('.profile-chip.role').textContent = roleLabel;
+    modal.querySelector('.profile-branch').textContent = profile.branch || profile.storeLocation || 'Main Branch';
+    const grid = modal.querySelector('.profile-modal-grid');
+
+    const employment = document.createElement('section');
+    employment.className = 'profile-card';
+    employment.innerHTML = '<h3 class="profile-card-title">Employment info</h3><div class="profile-info-list"></div>';
+    employment.querySelector('.profile-info-list').append(
+      makeProfileInfoRow('Date hired', profile.dateHired || profile.createdAt ? formatTimestamp(profile.dateHired || profile.createdAt) : 'Not provided'),
+      makeProfileInfoRow('Status', getStatusLabel(profile.status)),
+      makeProfileInfoRow('Employee ID', profile.employeeId || (profile.id ? `MS-${String(profile.id).padStart(4, '0')}` : 'Not assigned')),
+    );
+
+    const contact = document.createElement('section');
+    contact.className = 'profile-card';
+    contact.innerHTML = '<h3 class="profile-card-title">Contact info</h3><div class="profile-info-list"></div>';
+    contact.querySelector('.profile-info-list').append(makeProfileInfoRow('Email', profile.email || 'Not provided'));
+    const phoneRow = document.createElement('div');
+    phoneRow.className = 'profile-info-row';
+    phoneRow.innerHTML = '<span class="profile-info-label">Phone number</span><div class="profile-inline-edit"><input type="tel" autocomplete="tel" aria-label="Phone number"><button class="profile-btn" type="button">Save</button></div>';
+    phoneRow.querySelector('input').value = profile.phone || '';
+    phoneRow.querySelector('button').addEventListener('click', () => {
+      const phone = phoneRow.querySelector('input').value.trim();
+      const key = `posProfile:${user.id || user.username || 'current'}`;
+      localStorage.setItem(key, JSON.stringify({ ...savedProfile, phone, devices }));
+      showDashboardToast('Phone number saved on this device.', 'success');
+    });
+    contact.querySelector('.profile-info-list').append(phoneRow);
+
+    const security = document.createElement('section');
+    security.className = 'profile-card wide';
+    security.innerHTML = '<h3 class="profile-card-title">Security</h3><div class="profile-security-actions"><button class="profile-btn" data-action="pin" type="button">Change PIN</button><button class="profile-btn" data-action="password" type="button">Change Password</button></div><div class="profile-info-list"></div><div class="profile-devices"></div>';
+    security.querySelector('.profile-info-list').append(makeProfileInfoRow('Last login', profile.lastLogin ? formatTimestamp(profile.lastLogin) : 'Current session'));
+    security.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => showDashboardToast(`${button.textContent} requires the secure account endpoint to be enabled.`, 'info')));
+    const deviceList = security.querySelector('.profile-devices');
+    if (!devices.length) {
+      const empty = document.createElement('div');
+      empty.className = 'profile-empty';
+      empty.textContent = 'No paired devices linked to this account.';
+      deviceList.appendChild(empty);
+    } else {
+      devices.forEach((device, index) => {
+        const item = document.createElement('div');
+        item.className = 'profile-device';
+        item.innerHTML = `<div><div class="profile-device-name"></div><div class="profile-device-meta"></div></div><button class="profile-btn profile-unlink" type="button">Unlink</button>`;
+        item.querySelector('.profile-device-name').textContent = device.name || 'Paired device';
+        item.querySelector('.profile-device-meta').textContent = `Last active ${device.lastActive ? formatTimestamp(device.lastActive) : 'recently'}`;
+        item.querySelector('button').addEventListener('click', () => {
+          devices.splice(index, 1);
+          localStorage.setItem(`posProfile:${user.id || user.username || 'current'}`, JSON.stringify({ ...savedProfile, devices }));
+          item.remove();
+          showDashboardToast('Device unlinked from this browser profile.', 'success');
+        });
+        deviceList.appendChild(item);
+      });
+    }
+
+    const activity = document.createElement('section');
+    activity.className = 'profile-card wide';
+    activity.innerHTML = '<h3 class="profile-card-title">Activity summary</h3><div class="profile-stat-grid"><div class="profile-empty">Loading activity…</div></div>';
+    loadProfileStats(activity.querySelector('.profile-stat-grid'), profile);
+    grid.append(employment, contact, security, activity);
+
+    const permissions = profilePermissions(role);
+    if ((role === 'admin' || role === 'super-admin') && permissions.length) {
+      const permissionCard = document.createElement('section');
+      permissionCard.className = 'profile-card wide';
+      permissionCard.innerHTML = '<h3 class="profile-card-title">Assigned permissions</h3><div class="profile-permissions"></div>';
+      permissionCard.querySelector('.profile-permissions').replaceChildren(...permissions.map((permission) => {
+        const chip = document.createElement('span');
+        chip.className = 'profile-permission';
+        chip.textContent = permission;
+        return chip;
+      }));
+      grid.appendChild(permissionCard);
+    }
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    document.body.classList.add('profile-modal-open');
+    backdrop.addEventListener('pointerdown', (event) => { if (event.target === backdrop) closeProfileModal(); });
+    modal.querySelector('.profile-modal-close').addEventListener('click', closeProfileModal);
+    backdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeProfileModal();
+      if (event.key === 'Tab') {
+        const focusable = [...modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])')].filter((node) => !node.disabled);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+    requestAnimationFrame(() => backdrop.classList.add('open'));
+    modal.querySelector('.profile-modal-close').focus();
   }
 
   async function refreshDashboard() {

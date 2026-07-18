@@ -518,7 +518,7 @@
         <div class="name" id="currentUserName">Renz Villanueva</div>
         <div class="role" id="currentRoleBadge">ADMIN</div>
       </div>
-      <div class="avatar-ring" onclick="fnOpenProfileMenu()">RV</div>
+      <div class="avatar-ring" role="button" tabindex="0" aria-label="Open account profile" onclick="fnOpenProfileMenu()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fnOpenProfileMenu();}">RV</div>
     </div>
   </header>
 
@@ -709,7 +709,7 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
-<script src="role-dashboard.js?v=4"></script>
+<script src="role-dashboard.js?v=5"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({

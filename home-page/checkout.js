@@ -40,20 +40,21 @@ function getApiHeaders(extraHeaders = {}) {
 
 function parseJsonResponse(response) {
   return response.text().then((text) => {
-    if (!response.ok) {
-      let message = 'Request failed';
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed && parsed.error) {
-          message = parsed.error;
-        }
-      } catch (error) {
-        if (text) message = text;
-      }
-      throw new Error(message);
+    let parsed;
+    try {
+      parsed = text ? JSON.parse(text) : {};
+    } catch (error) {
+      const plainText = text
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      throw new Error(plainText || `Server returned an invalid response (${response.status}).`);
     }
-    if (!text) return {};
-    return JSON.parse(text);
+    if (!response.ok) {
+      throw new Error(parsed.error || `Checkout request failed (${response.status}).`);
+    }
+    return parsed;
   });
 }
 
