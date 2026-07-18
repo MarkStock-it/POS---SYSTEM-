@@ -45,6 +45,13 @@ function ensureSchema($mysqli) {
                 `role_id` INT NOT NULL,
                 `status` VARCHAR(20) NOT NULL DEFAULT 'active',
                 `email` VARCHAR(191) NOT NULL UNIQUE,
+                `username` VARCHAR(100) DEFAULT NULL UNIQUE,
+                `phone` VARCHAR(30) DEFAULT NULL,
+                `branch_location` VARCHAR(150) DEFAULT NULL,
+                `date_hired` DATE DEFAULT NULL,
+                `employment_status` VARCHAR(30) NOT NULL DEFAULT 'active',
+                `pin_hash` VARCHAR(255) DEFAULT NULL,
+                `last_login_at` TIMESTAMP NULL DEFAULT NULL,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT `fk_user_role` FOREIGN KEY (`role_id`) REFERENCES `role`(`role_id`)
             ) ENGINE=InnoDB"
@@ -196,6 +203,72 @@ function ensureSchema($mysqli) {
                 (3, 'admin'),
                 (4, 'super_admin')
              ON DUPLICATE KEY UPDATE `role_type` = VALUES(`role_type`)"
+        );
+
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(30) DEFAULT NULL AFTER `username`");
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `branch_location` VARCHAR(150) DEFAULT NULL AFTER `phone`");
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `date_hired` DATE DEFAULT NULL AFTER `branch_location`");
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `employment_status` VARCHAR(30) NOT NULL DEFAULT 'active' AFTER `date_hired`");
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `pin_hash` VARCHAR(255) DEFAULT NULL AFTER `employment_status`");
+        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `last_login_at` TIMESTAMP NULL DEFAULT NULL AFTER `pin_hash`");
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `user_device` (
+                `device_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `user_id` INT NOT NULL,
+                `device_token` CHAR(64) NOT NULL,
+                `device_name` VARCHAR(150) NOT NULL,
+                `last_active_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `uq_user_device_token` (`user_id`, `device_token`),
+                CONSTRAINT `fk_device_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `permission` (
+                `permission_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `permission_key` VARCHAR(100) NOT NULL UNIQUE,
+                `permission_label` VARCHAR(150) NOT NULL
+            ) ENGINE=InnoDB"
+        );
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `role_permission` (
+                `role_id` INT NOT NULL,
+                `permission_id` INT NOT NULL,
+                PRIMARY KEY (`role_id`, `permission_id`),
+                CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `role`(`role_id`) ON DELETE CASCADE,
+                CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `permission`(`permission_id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB"
+        );
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `user_permission` (
+                `user_id` INT NOT NULL,
+                `permission_id` INT NOT NULL,
+                PRIMARY KEY (`user_id`, `permission_id`),
+                CONSTRAINT `fk_user_permission_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+                CONSTRAINT `fk_user_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `permission`(`permission_id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "INSERT INTO `permission` (`permission_key`, `permission_label`) VALUES
+                ('manage_admins', 'Manage administrators'),
+                ('manage_staff', 'Manage staff accounts'),
+                ('manage_inventory', 'Manage inventory'),
+                ('view_transactions', 'View transactions'),
+                ('approve_transactions', 'Approve flagged transactions'),
+                ('generate_reports', 'Generate reports'),
+                ('configure_security', 'Configure security')
+             ON DUPLICATE KEY UPDATE `permission_label` = VALUES(`permission_label`)"
+        );
+        $mysqli->query(
+            "INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
+             SELECT `r`.`role_id`, `p`.`permission_id` FROM `role` `r` JOIN `permission` `p`
+             WHERE (`r`.`role_type` = 'super_admin')
+                OR (`r`.`role_type` = 'admin' AND `p`.`permission_key` IN ('manage_staff','manage_inventory','view_transactions','approve_transactions','generate_reports'))
+                OR (`r`.`role_type` = 'manager' AND `p`.`permission_key` IN ('manage_inventory','view_transactions','approve_transactions','generate_reports'))
+                OR (`r`.`role_type` = 'cashier' AND `p`.`permission_key` IN ('view_transactions'))"
         );
 
     } catch (Exception $e) {

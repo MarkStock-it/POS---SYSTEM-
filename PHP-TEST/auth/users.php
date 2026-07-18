@@ -69,7 +69,7 @@ if ($method === 'PUT') {
 $where = $userId > 0 ? ' WHERE `u`.`user_id` = ' . $userId : '';
 
 $result = $mysqli->query(
-    'SELECT `u`.`user_id` AS `id`, `u`.`full_name` AS `fullName`, `u`.`email`, `u`.`username`, `u`.`status`, `r`.`role_type` AS `role`, `u`.`created_at` AS `createdAt` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id`' . $where . ' ORDER BY `u`.`user_id` ASC'
+    'SELECT `u`.`user_id` AS `id`, `u`.`full_name` AS `fullName`, `u`.`email`, `u`.`username`, `u`.`phone`, `u`.`branch_location` AS `branchLocation`, `u`.`date_hired` AS `dateHired`, `u`.`employment_status` AS `employmentStatus`, `u`.`last_login_at` AS `lastLogin`, `u`.`status`, `r`.`role_type` AS `role`, `u`.`created_at` AS `createdAt` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id`' . $where . ' ORDER BY `u`.`user_id` ASC'
 );
 $rows = [];
 while ($row = $result->fetch_assoc()) {

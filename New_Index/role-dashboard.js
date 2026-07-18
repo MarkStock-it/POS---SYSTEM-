@@ -15,6 +15,7 @@
       'superadmin': 'super-admin',
       'super admin': 'super-admin',
       'super-admin': 'super-admin',
+      'super_admin': 'super-admin',
       'administrator': 'admin',
       'admin': 'admin',
       'manager': 'manager',
@@ -674,23 +675,25 @@
       body.profile-modal-open { overflow: hidden; }
       .profile-modal-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; background: rgba(4, 10, 20, .72); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); opacity: 0; transition: opacity .18s ease; }
       .profile-modal-backdrop.open { opacity: 1; }
-      .profile-modal { width: min(920px, 100%); max-height: min(88vh, 820px); overflow: hidden; display: flex; flex-direction: column; color: var(--text-primary, #e9eef7); background: var(--surface, #111a29); border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 14px; box-shadow: 0 28px 80px rgba(0,0,0,.48); transform: translateY(12px) scale(.985); transition: transform .18s ease; }
+      .profile-modal { width: min(860px, 100%); max-height: min(90vh, 820px); overflow: hidden; display: flex; flex-direction: column; color: var(--text-primary, #e9eef7); background: #0d1522; border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 22px; box-shadow: 0 32px 100px rgba(0,0,0,.58); transform: translateY(12px) scale(.985); transition: transform .18s ease; }
       .profile-modal-backdrop.open .profile-modal { transform: none; }
-      .profile-modal-header { position: relative; display: flex; align-items: center; gap: 16px; padding: 22px 24px; border-bottom: 1px solid var(--border-hairline, rgba(255,255,255,.1)); background: linear-gradient(135deg, rgba(37,99,235,.16), transparent 58%); }
-      .profile-modal-avatar { width: 68px; height: 68px; flex: 0 0 68px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--accent, #4f8cff); background: rgba(79,140,255,.14); color: var(--text-primary, #fff); font: 700 20px var(--font-display, inherit); }
+      .profile-modal-header { position: relative; display: flex; align-items: center; gap: 18px; padding: 27px 30px; border-bottom: 1px solid var(--border-hairline, rgba(255,255,255,.08)); background: radial-gradient(circle at 14% 0, rgba(45,112,255,.25), transparent 34%), linear-gradient(135deg, #111d30, #0d1522 68%); }
+      .profile-modal-header::after { content: ''; position: absolute; left: 30px; right: 30px; bottom: -1px; height: 1px; background: linear-gradient(90deg, #3f83ff, transparent 60%); }
+      .profile-modal-avatar { width: 74px; height: 74px; flex: 0 0 74px; display: grid; place-items: center; border-radius: 20px; border: 1px solid rgba(103,157,255,.55); background: linear-gradient(145deg, #2d6fe7, #17376d); color: #fff; box-shadow: 0 12px 28px rgba(24,78,177,.3); font: 750 22px var(--font-display, inherit); }
       .profile-modal-identity { min-width: 0; }
-      .profile-modal-name { margin: 0 0 4px; font: 700 21px var(--font-display, inherit); }
+      .profile-modal-name { margin: 0 0 5px; font: 750 23px var(--font-display, inherit); letter-spacing: -.02em; }
       .profile-modal-username { color: var(--text-tertiary, #91a0b7); font-size: 12px; }
       .profile-modal-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
       .profile-chip { padding: 4px 8px; border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 999px; color: var(--text-secondary, #c7d0df); background: rgba(255,255,255,.035); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
       .profile-chip.role { color: #9ec2ff; border-color: rgba(79,140,255,.35); background: rgba(79,140,255,.1); }
-      .profile-modal-close { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 8px; color: var(--text-secondary, #c7d0df); background: transparent; font-size: 22px; cursor: pointer; }
+      .profile-modal-close { position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; color: var(--text-secondary, #c7d0df); background: rgba(255,255,255,.035); font-size: 21px; cursor: pointer; }
       .profile-modal-close:hover { color: var(--text-primary, #fff); border-color: var(--border-hairline, rgba(255,255,255,.1)); background: rgba(255,255,255,.05); }
-      .profile-modal-body { overflow: auto; padding: 20px 24px 24px; }
+      .profile-modal-body { overflow: auto; padding: 22px 26px 27px; background: linear-gradient(180deg, #0d1522, #0a111c); }
       .profile-modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-      .profile-card { padding: 17px; border: 1px solid var(--border-hairline, rgba(255,255,255,.1)); border-radius: 10px; background: rgba(255,255,255,.025); }
+      .profile-card { padding: 18px; border: 1px solid rgba(255,255,255,.075); border-radius: 14px; background: #111b2a; box-shadow: 0 9px 22px rgba(0,0,0,.13); }
       .profile-card.wide { grid-column: 1 / -1; }
-      .profile-card-title { margin: 0 0 14px; color: var(--text-primary, #fff); font: 700 12px var(--font-display, inherit); letter-spacing: .08em; text-transform: uppercase; }
+      .profile-card-title { display: flex; align-items: center; gap: 8px; margin: 0 0 15px; color: #f2f6fd; font: 700 11px var(--font-display, inherit); letter-spacing: .1em; text-transform: uppercase; }
+      .profile-card-title::before { content: ''; width: 7px; height: 7px; border-radius: 2px; background: #4d8dff; box-shadow: 0 0 12px rgba(77,141,255,.7); }
       .profile-info-list { display: grid; gap: 11px; }
       .profile-info-row { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; min-height: 29px; }
       .profile-info-label { color: var(--text-tertiary, #91a0b7); font-size: 11px; }
@@ -701,6 +704,13 @@
       .profile-btn { border: 1px solid var(--border-hairline, rgba(255,255,255,.12)); border-radius: 6px; padding: 8px 11px; color: var(--text-secondary, #d5dbe6); background: rgba(255,255,255,.04); font: 600 11px inherit; cursor: pointer; white-space: nowrap; }
       .profile-btn:hover { color: #fff; border-color: rgba(79,140,255,.45); background: rgba(79,140,255,.12); }
       .profile-security-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+      .profile-security-editor { display: none; margin: 2px 0 16px; padding: 14px; border: 1px solid rgba(79,140,255,.2); border-radius: 10px; background: rgba(7,13,23,.55); }
+      .profile-security-editor.open { display: block; }
+      .profile-security-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+      .profile-security-form label { display: grid; gap: 6px; color: var(--text-tertiary, #91a0b7); font-size: 10px; }
+      .profile-security-form input { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid rgba(255,255,255,.11); border-radius: 7px; outline: none; color: #fff; background: #0b1421; }
+      .profile-security-form input:focus { border-color: #4d8dff; }
+      .profile-security-form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
       .profile-device { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-hairline, rgba(255,255,255,.08)); }
       .profile-device-name { color: var(--text-secondary, #d5dbe6); font-size: 12px; font-weight: 600; }
       .profile-device-meta, .profile-empty { margin-top: 3px; color: var(--text-tertiary, #91a0b7); font-size: 10px; }
@@ -711,7 +721,7 @@
       .profile-stat-label { margin-top: 4px; color: var(--text-tertiary, #91a0b7); font-size: 10px; }
       .profile-permissions { display: flex; flex-wrap: wrap; gap: 7px; }
       .profile-permission { padding: 6px 9px; border-radius: 6px; color: #b8cff8; background: rgba(79,140,255,.09); border: 1px solid rgba(79,140,255,.18); font-size: 10px; }
-      @media (max-width: 680px) { .profile-modal-backdrop { padding: 10px; } .profile-modal { max-height: 94vh; } .profile-modal-grid { grid-template-columns: 1fr; } .profile-card.wide { grid-column: auto; } .profile-modal-header, .profile-modal-body { padding-left: 17px; padding-right: 17px; } .profile-info-row { grid-template-columns: 96px minmax(0,1fr); } .profile-stat-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 680px) { .profile-modal-backdrop { padding: 8px; } .profile-modal { max-height: 96vh; border-radius: 17px; } .profile-modal-grid { grid-template-columns: 1fr; } .profile-card.wide { grid-column: auto; } .profile-modal-header, .profile-modal-body { padding-left: 17px; padding-right: 17px; } .profile-modal-avatar { width: 62px; height: 62px; flex-basis: 62px; border-radius: 17px; } .profile-info-row { grid-template-columns: 96px minmax(0,1fr); } .profile-stat-grid, .profile-security-form { grid-template-columns: 1fr; } }
       @media (prefers-reduced-motion: reduce) { .profile-modal-backdrop, .profile-modal { transition: none; } }
     `;
     document.head.appendChild(style);
@@ -720,14 +730,6 @@
   function profileInitials(user) {
     const source = user.fullName || user.username || user.email || 'User';
     return source.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
-  }
-
-  function profilePermissions(role) {
-    const permissions = {
-      'super-admin': ['Full system access', 'Manage admins', 'Manage branches', 'Manage staff', 'View reports', 'Configure security'],
-      admin: ['Manage managers', 'Manage cashiers', 'View transactions', 'Generate reports', 'Manage inventory'],
-    };
-    return permissions[normalizeRole(role)] || [];
   }
 
   function closeProfileModal() {
@@ -788,24 +790,16 @@
     closeProfileModal();
     injectProfileModalStyles();
     let user = getCurrentUser();
-    if (user.id) {
-      try {
-        const account = await fetchJson(phpApi('auth/users.php', `?id=${encodeURIComponent(user.id)}`));
-        user = { ...user, ...(account || {}) };
-      } catch (error) {
-        console.error('Unable to refresh account profile:', error);
-      }
+    try {
+      user = { ...user, ...(await fetchJson(phpApi('auth/profile.php'))) };
+    } catch (error) {
+      showDashboardToast(error.message || 'Unable to load the account profile.', 'error');
+      return;
     }
     const role = normalizeRole(user.role);
     const roleLabel = getRoleLabel(role);
-    let savedProfile = {};
-    try {
-      savedProfile = JSON.parse(localStorage.getItem(`posProfile:${user.id || user.username || 'current'}`) || '{}') || {};
-    } catch (error) {
-      savedProfile = {};
-    }
-    const devices = Array.isArray(savedProfile.devices) ? savedProfile.devices : [];
-    const profile = { ...user, ...savedProfile };
+    const devices = Array.isArray(user.devices) ? user.devices : [];
+    const profile = user;
     profileModalReturnFocus = document.activeElement;
 
     const backdrop = document.createElement('div');
@@ -830,15 +824,15 @@
     modal.querySelector('.profile-modal-name').textContent = profile.fullName || profile.username || 'MarkStock-it User';
     modal.querySelector('.profile-modal-username').textContent = `@${profile.username || String(profile.email || 'user').split('@')[0]}`;
     modal.querySelector('.profile-chip.role').textContent = roleLabel;
-    modal.querySelector('.profile-branch').textContent = profile.branch || profile.storeLocation || 'Main Branch';
+    modal.querySelector('.profile-branch').textContent = profile.branchLocation || 'Branch not assigned';
     const grid = modal.querySelector('.profile-modal-grid');
 
     const employment = document.createElement('section');
     employment.className = 'profile-card';
     employment.innerHTML = '<h3 class="profile-card-title">Employment info</h3><div class="profile-info-list"></div>';
     employment.querySelector('.profile-info-list').append(
-      makeProfileInfoRow('Date hired', profile.dateHired || profile.createdAt ? formatTimestamp(profile.dateHired || profile.createdAt) : 'Not provided'),
-      makeProfileInfoRow('Status', getStatusLabel(profile.status)),
+      makeProfileInfoRow('Date hired', profile.dateHired ? new Date(`${profile.dateHired}T00:00:00`).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not provided'),
+      makeProfileInfoRow('Status', profile.employmentStatus || getStatusLabel(profile.status)),
       makeProfileInfoRow('Employee ID', profile.employeeId || (profile.id ? `MS-${String(profile.id).padStart(4, '0')}` : 'Not assigned')),
     );
 
@@ -850,19 +844,62 @@
     phoneRow.className = 'profile-info-row';
     phoneRow.innerHTML = '<span class="profile-info-label">Phone number</span><div class="profile-inline-edit"><input type="tel" autocomplete="tel" aria-label="Phone number"><button class="profile-btn" type="button">Save</button></div>';
     phoneRow.querySelector('input').value = profile.phone || '';
-    phoneRow.querySelector('button').addEventListener('click', () => {
+    phoneRow.querySelector('button').addEventListener('click', async () => {
       const phone = phoneRow.querySelector('input').value.trim();
-      const key = `posProfile:${user.id || user.username || 'current'}`;
-      localStorage.setItem(key, JSON.stringify({ ...savedProfile, phone, devices }));
-      showDashboardToast('Phone number saved on this device.', 'success');
+      const saveButton = phoneRow.querySelector('button');
+      saveButton.disabled = true;
+      try {
+        await fetchJson(phpApi('auth/profile.php'), { method: 'PUT', body: JSON.stringify({ phone }) });
+        showDashboardToast('Phone number updated.', 'success');
+      } catch (error) {
+        showDashboardToast(error.message || 'Unable to update phone number.', 'error');
+      } finally {
+        saveButton.disabled = false;
+      }
     });
     contact.querySelector('.profile-info-list').append(phoneRow);
 
     const security = document.createElement('section');
     security.className = 'profile-card wide';
-    security.innerHTML = '<h3 class="profile-card-title">Security</h3><div class="profile-security-actions"><button class="profile-btn" data-action="pin" type="button">Change PIN</button><button class="profile-btn" data-action="password" type="button">Change Password</button></div><div class="profile-info-list"></div><div class="profile-devices"></div>';
-    security.querySelector('.profile-info-list').append(makeProfileInfoRow('Last login', profile.lastLogin ? formatTimestamp(profile.lastLogin) : 'Current session'));
-    security.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => showDashboardToast(`${button.textContent} requires the secure account endpoint to be enabled.`, 'info')));
+    security.innerHTML = '<h3 class="profile-card-title">Security</h3><div class="profile-security-actions"><button class="profile-btn" data-action="pin" type="button">Change PIN</button><button class="profile-btn" data-action="password" type="button">Change Password</button></div><div class="profile-security-editor"></div><div class="profile-info-list"></div><div class="profile-devices"></div>';
+    security.querySelector('.profile-info-list').append(makeProfileInfoRow('Last login', profile.lastLogin ? formatTimestamp(profile.lastLogin) : 'First recorded login'));
+    security.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => {
+      const isPassword = button.dataset.action === 'password';
+      const editor = security.querySelector('.profile-security-editor');
+      editor.classList.add('open');
+      editor.innerHTML = `<form class="profile-security-form">
+        <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>${isPassword ? 'New password' : 'New PIN'}<input name="newValue" type="password" ${isPassword ? 'autocomplete="new-password" minlength="8"' : 'inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6"'} required></label>
+        <label>Confirm ${isPassword ? 'password' : 'PIN'}<input name="confirmation" type="password" ${isPassword ? 'autocomplete="new-password" minlength="8"' : 'inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6"'} required></label>
+        <div class="profile-security-form-actions"><button class="profile-btn" data-cancel type="button">Cancel</button><button class="profile-btn" type="submit">Save ${isPassword ? 'password' : 'PIN'}</button></div>
+      </form>`;
+      const form = editor.querySelector('form');
+      editor.querySelector('[data-cancel]').addEventListener('click', () => { editor.classList.remove('open'); editor.replaceChildren(); });
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const values = new FormData(form);
+        const newValue = String(values.get('newValue') || '');
+        if (newValue !== String(values.get('confirmation') || '')) {
+          showDashboardToast(`${isPassword ? 'Passwords' : 'PINs'} do not match.`, 'warning');
+          return;
+        }
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        try {
+          await fetchJson(phpApi('auth/profile.php'), {
+            method: 'POST',
+            body: JSON.stringify({ action: isPassword ? 'change-password' : 'change-pin', currentPassword: values.get('currentPassword'), [isPassword ? 'newPassword' : 'newPin']: newValue }),
+          });
+          editor.classList.remove('open');
+          editor.replaceChildren();
+          showDashboardToast(`${isPassword ? 'Password' : 'PIN'} changed successfully.`, 'success');
+        } catch (error) {
+          showDashboardToast(error.message || `Unable to change ${isPassword ? 'password' : 'PIN'}.`, 'error');
+          submit.disabled = false;
+        }
+      });
+      form.querySelector('input').focus();
+    }));
     const deviceList = security.querySelector('.profile-devices');
     if (!devices.length) {
       const empty = document.createElement('div');
@@ -870,17 +907,23 @@
       empty.textContent = 'No paired devices linked to this account.';
       deviceList.appendChild(empty);
     } else {
-      devices.forEach((device, index) => {
+      devices.forEach((device) => {
         const item = document.createElement('div');
         item.className = 'profile-device';
         item.innerHTML = `<div><div class="profile-device-name"></div><div class="profile-device-meta"></div></div><button class="profile-btn profile-unlink" type="button">Unlink</button>`;
         item.querySelector('.profile-device-name').textContent = device.name || 'Paired device';
         item.querySelector('.profile-device-meta').textContent = `Last active ${device.lastActive ? formatTimestamp(device.lastActive) : 'recently'}`;
-        item.querySelector('button').addEventListener('click', () => {
-          devices.splice(index, 1);
-          localStorage.setItem(`posProfile:${user.id || user.username || 'current'}`, JSON.stringify({ ...savedProfile, devices }));
-          item.remove();
-          showDashboardToast('Device unlinked from this browser profile.', 'success');
+        item.querySelector('button').addEventListener('click', async () => {
+          const unlinkButton = item.querySelector('button');
+          unlinkButton.disabled = true;
+          try {
+            await fetchJson(phpApi('auth/profile.php'), { method: 'POST', body: JSON.stringify({ action: 'unlink-device', deviceId: device.id }) });
+            item.remove();
+            showDashboardToast('Device unlinked.', 'success');
+          } catch (error) {
+            unlinkButton.disabled = false;
+            showDashboardToast(error.message || 'Unable to unlink device.', 'error');
+          }
         });
         deviceList.appendChild(item);
       });
@@ -892,7 +935,7 @@
     loadProfileStats(activity.querySelector('.profile-stat-grid'), profile);
     grid.append(employment, contact, security, activity);
 
-    const permissions = profilePermissions(role);
+    const permissions = Array.isArray(profile.permissions) ? profile.permissions : [];
     if ((role === 'admin' || role === 'super-admin') && permissions.length) {
       const permissionCard = document.createElement('section');
       permissionCard.className = 'profile-card wide';
@@ -900,7 +943,7 @@
       permissionCard.querySelector('.profile-permissions').replaceChildren(...permissions.map((permission) => {
         const chip = document.createElement('span');
         chip.className = 'profile-permission';
-        chip.textContent = permission;
+        chip.textContent = permission.label || permission.key || permission;
         return chip;
       }));
       grid.appendChild(permissionCard);
