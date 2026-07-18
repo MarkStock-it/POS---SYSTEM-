@@ -9,7 +9,9 @@ $productId = (int) ($_GET['id'] ?? 0);
 if ($method !== 'GET') {
     $name = trim((string) ($data['name'] ?? ''));
     $sku = trim((string) ($data['sku'] ?? ''));
+    $barcode = trim((string) ($data['barcode'] ?? ''));
     $categoryName = trim((string) ($data['category'] ?? ''));
+    $description = trim((string) ($data['description'] ?? ''));
     $price = (float) ($data['price'] ?? 0);
     $cost = max(0, (float) ($data['cost'] ?? 0));
     $stock = max(0, (int) ($data['stock'] ?? 0));
@@ -56,8 +58,8 @@ if ($method !== 'GET') {
         }
 
         if ($method === 'POST') {
-            $stmt = $mysqli->prepare('INSERT INTO `product` (`product_code`, `category_id`, `name`, `price`, `cost_price`, `restock_threshold`, `status`, `delete_flag`, `image_path`) VALUES (?, ?, ?, ?, ?, ?, "active", 0, ?)');
-            $stmt->bind_param('sisddis', $sku, $categoryId, $name, $price, $cost, $threshold, $image);
+            $stmt = $mysqli->prepare('INSERT INTO `product` (`product_code`, `barcode`, `category_id`, `name`, `description`, `price`, `cost_price`, `restock_threshold`, `status`, `delete_flag`, `image_path`) VALUES (?, NULLIF(?, ""), ?, ?, ?, ?, ?, ?, "active", 0, ?)');
+            $stmt->bind_param('ssissddis', $sku, $barcode, $categoryId, $name, $description, $price, $cost, $threshold, $image);
             $stmt->execute();
             $productId = (int) $mysqli->insert_id;
             $stockStmt = $mysqli->prepare('INSERT INTO `stock` (`product_id`, `quantity`) VALUES (?, ?)');
@@ -65,8 +67,8 @@ if ($method !== 'GET') {
             $stockStmt->execute();
         } elseif ($method === 'PUT') {
             if ($productId <= 0) throw new RuntimeException('Product ID is required.');
-            $stmt = $mysqli->prepare('UPDATE `product` SET `product_code` = ?, `category_id` = ?, `name` = ?, `price` = ?, `cost_price` = ?, `restock_threshold` = ?, `status` = "active", `delete_flag` = 0, `image_path` = ? WHERE `product_id` = ?');
-            $stmt->bind_param('sisddisi', $sku, $categoryId, $name, $price, $cost, $threshold, $image, $productId);
+            $stmt = $mysqli->prepare('UPDATE `product` SET `product_code` = ?, `barcode` = NULLIF(?, ""), `category_id` = ?, `name` = ?, `description` = ?, `price` = ?, `cost_price` = ?, `restock_threshold` = ?, `status` = "active", `delete_flag` = 0, `image_path` = ? WHERE `product_id` = ?');
+            $stmt->bind_param('ssissddisi', $sku, $barcode, $categoryId, $name, $description, $price, $cost, $threshold, $image, $productId);
             $stmt->execute();
             $stockQuery = $mysqli->prepare('SELECT `stock_id` FROM `stock` WHERE `product_id` = ? ORDER BY `stock_id` LIMIT 1');
             $stockQuery->bind_param('i', $productId);
@@ -87,7 +89,7 @@ if ($method !== 'GET') {
         }
 
         $mysqli->commit();
-        echo json_encode(['id' => $productId, 'name' => $name, 'sku' => $sku, 'category' => $categoryName, 'price' => $price, 'cost' => $cost, 'stock' => $stock, 'threshold' => $threshold, 'image' => $image]);
+        echo json_encode(['id' => $productId, 'name' => $name, 'sku' => $sku, 'barcode' => $barcode ?: null, 'category' => $categoryName, 'description' => $description ?: null, 'price' => $price, 'cost' => $cost, 'stock' => $stock, 'threshold' => $threshold, 'image' => $image]);
     } catch (mysqli_sql_exception $e) {
         $mysqli->rollback();
         http_response_code((int) $e->getCode() === 1062 ? 409 : 500);
@@ -104,16 +106,16 @@ $search = trim((string) ($_GET['search'] ?? ''));
 $category = strtolower(trim((string) ($_GET['category'] ?? 'all')));
 $stockFilter = strtolower(trim((string) ($_GET['stock'] ?? 'all')));
 
-$sql = 'SELECT p.product_id AS id, p.product_code AS sku, p.name, p.price, p.cost_price AS cost, COALESCE(s.quantity, 0) AS stock, p.image_path AS image, c.name AS category, p.restock_threshold AS threshold, p.status, p.delete_flag AS deleteFlag, sc.counted_quantity AS currentStock, sc.expected_quantity AS checkedExpectedStock, sc.checked_by_name AS stockCheckedBy, sc.checked_at AS stockCheckedAt FROM `product` AS p LEFT JOIN `category` AS c ON c.category_id = p.category_id LEFT JOIN (SELECT product_id, SUM(quantity) AS quantity FROM `stock` GROUP BY product_id) AS s ON s.product_id = p.product_id LEFT JOIN `stock_check` AS sc ON sc.stock_check_id = (SELECT sc_latest.stock_check_id FROM `stock_check` AS sc_latest WHERE sc_latest.product_id = p.product_id ORDER BY sc_latest.checked_at DESC, sc_latest.stock_check_id DESC LIMIT 1)';
+$sql = 'SELECT p.product_id AS id, p.product_code AS sku, p.barcode, p.name, p.description, p.price, p.cost_price AS cost, COALESCE(s.quantity, 0) AS stock, p.image_path AS image, c.name AS category, p.restock_threshold AS threshold, p.status, p.delete_flag AS deleteFlag, sc.counted_quantity AS currentStock, sc.expected_quantity AS checkedExpectedStock, sc.checked_by_name AS stockCheckedBy, sc.checked_at AS stockCheckedAt FROM `product` AS p LEFT JOIN `category` AS c ON c.category_id = p.category_id LEFT JOIN (SELECT product_id, SUM(quantity) AS quantity FROM `stock` GROUP BY product_id) AS s ON s.product_id = p.product_id LEFT JOIN `stock_check` AS sc ON sc.stock_check_id = (SELECT sc_latest.stock_check_id FROM `stock_check` AS sc_latest WHERE sc_latest.product_id = p.product_id ORDER BY sc_latest.checked_at DESC, sc_latest.stock_check_id DESC LIMIT 1)';
 $where = ['p.delete_flag = 0'];
 $params = [];
 $types = '';
 
 if ($search !== '') {
-    $where[] = '(p.name LIKE ? OR p.product_code LIKE ? OR c.name LIKE ?)';
+    $where[] = '(p.name LIKE ? OR p.product_code LIKE ? OR p.barcode LIKE ? OR c.name LIKE ?)';
     $pattern = "%$search%";
-    $params = array_merge($params, [$pattern, $pattern, $pattern]);
-    $types .= 'sss';
+    $params = array_merge($params, [$pattern, $pattern, $pattern, $pattern]);
+    $types .= 'ssss';
 }
 
 if ($category !== '' && $category !== 'all') {
@@ -149,7 +151,7 @@ while ($row = $result->fetch_assoc()) {
         'id' => (int) $row['id'],
         'name' => $row['name'],
         'sku' => $row['sku'],
-        'barcode' => null,
+        'barcode' => $row['barcode'],
         'category' => $row['category'],
         'price' => (float) $row['price'],
         'stock' => (int) $row['stock'],
@@ -158,7 +160,7 @@ while ($row = $result->fetch_assoc()) {
         'stockCheckedBy' => $row['stockCheckedBy'],
         'stockCheckedAt' => $row['stockCheckedAt'],
         'image' => $row['image'],
-        'description' => null,
+        'description' => $row['description'],
         'cost' => (float) $row['cost'],
         'threshold' => (int) $row['threshold'],
         'status' => $row['status'],

@@ -57,7 +57,8 @@ function ensureSchema($mysqli) {
                 `status` VARCHAR(20) NOT NULL DEFAULT 'active',
                 `delete_flag` TINYINT(1) NOT NULL DEFAULT 0,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY `uq_category_name` (`name`)
             ) ENGINE=InnoDB"
         );
 
@@ -65,8 +66,10 @@ function ensureSchema($mysqli) {
             "CREATE TABLE IF NOT EXISTS `product` (
                 `product_id` INT AUTO_INCREMENT PRIMARY KEY,
                 `product_code` VARCHAR(100) NOT NULL UNIQUE,
+                `barcode` VARCHAR(100) DEFAULT NULL UNIQUE,
                 `category_id` INT DEFAULT NULL,
                 `name` VARCHAR(150) NOT NULL,
+                `description` TEXT DEFAULT NULL,
                 `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
                 `cost_price` DECIMAL(10,2) NOT NULL DEFAULT 0,
                 `restock_threshold` INT NOT NULL DEFAULT 0,
@@ -83,6 +86,8 @@ function ensureSchema($mysqli) {
         if ($costColumn && $costColumn->num_rows === 0) {
             $mysqli->query("ALTER TABLE `product` ADD COLUMN `cost_price` DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER `price`");
         }
+        $mysqli->query("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `barcode` VARCHAR(100) DEFAULT NULL UNIQUE AFTER `product_code`");
+        $mysqli->query("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `description` TEXT DEFAULT NULL AFTER `name`");
 
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `stock` (
