@@ -14,7 +14,7 @@ if ($identifier === '' || $password === '') {
 }
 
 $stmt = $mysqli->prepare(
-    'SELECT `u`.`user_id` AS `id`, `u`.`full_name`, `u`.`email`, `u`.`username`, `u`.`password_hash`, `u`.`last_login_at`, `r`.`role_type` AS `role` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE LOWER(`u`.`email`) = ? OR LOWER(`u`.`username`) = ? LIMIT 1'
+    'SELECT `u`.`user_id` AS `id`, `u`.`full_name`, `u`.`email`, `u`.`username`, `u`.`password_hash`, `u`.`last_login_at`, `u`.`status`, `u`.`employment_status`, `r`.`role_type` AS `role` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE LOWER(`u`.`email`) = ? OR LOWER(`u`.`username`) = ? LIMIT 1'
 );
 $needle = strtolower($identifier);
 $stmt->bind_param('ss', $needle, $needle);
@@ -25,6 +25,11 @@ $user = $result->fetch_assoc();
 if (!$user || !password_verify($password, $user['password_hash'])) {
     http_response_code(401);
     echo json_encode(['error' => 'Invalid credentials.']);
+    exit;
+}
+if ($user['status'] !== 'active' || $user['employment_status'] === 'inactive') {
+    http_response_code(403);
+    echo json_encode(['error' => 'This account is inactive. Contact an administrator.']);
     exit;
 }
 

@@ -142,7 +142,13 @@ const OFFLINE_ACCOUNTS = Object.freeze([
   isLocalAccount: true,
 })));
 
+function isOfflineDevelopmentMode() {
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    || new URLSearchParams(window.location.search).get('offline') === '1';
+}
+
 function getOfflineAccount(identifier, password) {
+  if (!isOfflineDevelopmentMode()) return null;
   const normalized = String(identifier || '').trim().toLowerCase();
   const account = OFFLINE_ACCOUNTS.find((candidate) => normalized === candidate.username || normalized === candidate.email);
   return account && String(password) === account.password ? { ...account } : null;
@@ -223,7 +229,6 @@ loginForm.addEventListener("submit", async (e) => {
         email: backendUser.email || "",
         username: backendUser.username || backendUser.email || "",
         role: normalizedRole,
-        password,
         createdAt: new Date().toISOString(),
       };
       if (existingIndex >= 0) {
@@ -234,9 +239,14 @@ loginForm.addEventListener("submit", async (e) => {
       localStorage.setItem("posUsers", JSON.stringify(storedUsers));
     }
   } catch (error) {
+    if (Number.isInteger(error?.status)) {
+      showFieldError(emailInput, error.message || 'Invalid login credentials. Please try again.');
+      showFieldError(passwordInput, 'Unable to sign in with these credentials.');
+      return;
+    }
     if (offlineAccount) {
       user = offlineAccount;
-    } else if (!user || String(user.password || "") !== String(password)) {
+    } else if (!isOfflineDevelopmentMode() || !user || String(user.password || "") !== String(password)) {
       showFieldError(emailInput, "Invalid login credentials. Please try again.");
       showFieldError(passwordInput, "Invalid login credentials.");
       return;

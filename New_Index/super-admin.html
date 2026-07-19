@@ -770,6 +770,22 @@
     try { return { ...DEFAULT_SYSTEM_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}') || {}) }; }
     catch (error) { return { ...DEFAULT_SYSTEM_SETTINGS }; }
   }
+  async function loadSystemSettings() {
+    const cached = getSystemSettings();
+    const currentUser = window.roleDashboard?.getCurrentUser?.() || {};
+    if (currentUser.isLocalAccount) return cached;
+    try {
+      const response = await fetch('../PHP-TEST/settings.php', { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load settings.');
+      const settings = { ...DEFAULT_SYSTEM_SETTINGS, ...payload };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      return settings;
+    } catch (error) {
+      window.roleDashboard?.showDashboardToast?.('Using cached settings while the server is unavailable.', 'warning');
+      return cached;
+    }
+  }
   function populateSettingsForm(settings = getSystemSettings()) {
     const form = document.getElementById('systemSettingsForm');
     if (!form) return;
@@ -930,17 +946,28 @@
     settingsForm.addEventListener('input', () => setSettingsDirty(true));
     settingsForm.addEventListener('change', () => setSettingsDirty(true));
     document.getElementById('auditSearch').addEventListener('input', renderAuditLog);
-    settingsForm.addEventListener('submit', (event) => {
+    settingsForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;
       const settings = { ...readSettingsForm(), updatedAt: new Date().toISOString() };
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-      applySystemSettings(settings);
-      populateSettingsForm(settings);
-      window.roleDashboard?.recordActivity?.('updated local system settings', 'settings');
-      window.roleDashboard?.showDashboardToast?.('System settings saved locally.', 'success');
+      const currentUser = window.roleDashboard?.getCurrentUser?.() || {};
+      try {
+        if (!currentUser.isLocalAccount) {
+          const response = await fetch('../PHP-TEST/settings.php', { method: 'PUT', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || 'Unable to save settings.');
+        }
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        applySystemSettings(settings);
+        populateSettingsForm(settings);
+        window.roleDashboard?.showDashboardToast?.(currentUser.isLocalAccount ? 'Settings saved to the offline cache.' : 'System settings saved.', 'success');
+      } catch (error) {
+        window.roleDashboard?.showDashboardToast?.(error.message || 'Unable to save system settings.', 'error');
+      }
     });
-    applySystemSettings(getSystemSettings());
+    const authoritativeSettings = await loadSystemSettings();
+    populateSettingsForm(authoritativeSettings);
+    applySystemSettings(authoritativeSettings);
     setAdminView(location.hash === '#settings' ? 'settings' : location.hash === '#audit' ? 'audit' : 'dashboard');
   });
 </script>

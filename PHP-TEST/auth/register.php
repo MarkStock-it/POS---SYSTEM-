@@ -1,6 +1,10 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../api-auth.php';
+
+$creator = requireUser($mysqli, ['admin', 'super_admin']);
 
 $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 $fullName = trim((string) ($data['fullName'] ?? ''));
@@ -35,6 +39,9 @@ $allowedEmploymentStatuses = ['active', 'probationary', 'part-time', 'on-leave',
 if (!in_array($employmentStatus, $allowedEmploymentStatuses, true)) $employmentStatus = 'active';
 
 $roleType = in_array($role, ['manager', 'admin', 'super_admin', 'super-admin'], true) ? ($role === 'super-admin' ? 'super_admin' : $role) : 'cashier';
+if ($creator['role'] === 'admin' && !in_array($roleType, ['manager', 'cashier'], true)) {
+    apiJson(403, ['error' => 'Admins can only create manager and cashier accounts.']);
+}
 
 $roleStmt = $mysqli->prepare('SELECT `role_id` FROM `role` WHERE `role_type` = ? LIMIT 1');
 $roleStmt->bind_param('s', $roleType);
@@ -55,6 +62,7 @@ $stmt->bind_param('ssissssssss', $fullName, $hash, $roleRow['role_id'], $account
 
 try {
     $stmt->execute();
+    writeAudit($mysqli, $creator, 'Created ' . $roleType . ' account for ' . $fullName, 'user', (string) $mysqli->insert_id);
 } catch (mysqli_sql_exception $e) {
     if ((int) $e->getCode() === 1062) {
         http_response_code(409);

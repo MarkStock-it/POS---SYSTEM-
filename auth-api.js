@@ -46,6 +46,8 @@ function mapEndpointToApiPath(url) {
     '/api/auth/register': 'PHP-TEST/auth/register.php',
     '/api/auth/register/v2': 'PHP-TEST/auth/register.php',
     '/api/auth/users': 'PHP-TEST/auth/users.php',
+    '/api/auth/profile': 'PHP-TEST/auth/profile.php',
+    '/api/settings': 'PHP-TEST/settings.php',
   };
   return routes[url] || url;
 }

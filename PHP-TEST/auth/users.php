@@ -2,6 +2,9 @@
 session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../api-auth.php';
+
+$actor = requireUser($mysqli, ['admin', 'super_admin']);
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $userId = (int) ($_GET['id'] ?? 0);
@@ -62,6 +65,7 @@ if ($method === 'PUT') {
         $statusStmt->bind_param('si', $status, $userId);
         $statusStmt->execute();
     }
+    writeAudit($mysqli, $actor, 'Updated account role or status', 'user', (string) $userId);
     echo json_encode(['success' => true, 'id' => $userId]);
     exit;
 }

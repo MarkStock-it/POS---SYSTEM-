@@ -1,6 +1,10 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/api-auth.php';
+
+$actor = requireUser($mysqli, ['admin', 'super_admin']);
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
@@ -19,9 +23,6 @@ if ($method !== 'POST') {
 }
 
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
-$actorUserId = (int) ($data['actorUserId'] ?? 0);
-$actorName = trim((string) ($data['actorName'] ?? 'Unknown user'));
-$actorRole = trim((string) ($data['actorRole'] ?? ''));
 $actionText = trim((string) ($data['actionText'] ?? ''));
 $entityType = trim((string) ($data['entityType'] ?? ''));
 $entityId = trim((string) ($data['entityId'] ?? ''));
@@ -32,20 +33,8 @@ if ($actionText === '') {
     exit;
 }
 
-$actorName = mb_substr($actorName === '' ? 'Unknown user' : $actorName, 0, 150);
-$actorRole = mb_substr($actorRole, 0, 30);
 $actionText = mb_substr($actionText, 0, 500);
 $entityType = mb_substr($entityType, 0, 50);
 $entityId = mb_substr($entityId, 0, 100);
-$nullableActorId = null;
-if ($actorUserId > 0) {
-    $userStmt = $mysqli->prepare('SELECT user_id FROM `user` WHERE user_id = ? LIMIT 1');
-    $userStmt->bind_param('i', $actorUserId);
-    $userStmt->execute();
-    if ($userStmt->get_result()->fetch_assoc()) $nullableActorId = $actorUserId;
-}
-
-$stmt = $mysqli->prepare('INSERT INTO `audit_log` (`actor_user_id`, `actor_name`, `actor_role`, `action_text`, `entity_type`, `entity_id`) VALUES (?, ?, ?, ?, ?, ?)');
-$stmt->bind_param('isssss', $nullableActorId, $actorName, $actorRole, $actionText, $entityType, $entityId);
-$stmt->execute();
+writeAudit($mysqli, $actor, $actionText, $entityType, $entityId);
 echo json_encode(['success' => true, 'id' => (int) $mysqli->insert_id]);

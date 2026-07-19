@@ -30,6 +30,14 @@ try {
 
 function ensureSchema($mysqli) {
     try {
+        $addColumn = function ($table, $column, $definition) use ($mysqli) {
+            $stmt = $mysqli->prepare('SELECT COUNT(*) AS `count` FROM `information_schema`.`COLUMNS` WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = ? AND `COLUMN_NAME` = ?');
+            $stmt->bind_param('ss', $table, $column);
+            $stmt->execute();
+            if ((int) $stmt->get_result()->fetch_assoc()['count'] === 0) {
+                $mysqli->query("ALTER TABLE `{$table}` ADD COLUMN `{$column}` {$definition}");
+            }
+        };
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `role` (
                 `role_id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -93,8 +101,8 @@ function ensureSchema($mysqli) {
         if ($costColumn && $costColumn->num_rows === 0) {
             $mysqli->query("ALTER TABLE `product` ADD COLUMN `cost_price` DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER `price`");
         }
-        $mysqli->query("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `barcode` VARCHAR(100) DEFAULT NULL UNIQUE AFTER `product_code`");
-        $mysqli->query("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `description` TEXT DEFAULT NULL AFTER `name`");
+        $addColumn('product', 'barcode', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `product_code`');
+        $addColumn('product', 'description', 'TEXT DEFAULT NULL AFTER `name`');
 
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `stock` (
@@ -205,12 +213,13 @@ function ensureSchema($mysqli) {
              ON DUPLICATE KEY UPDATE `role_type` = VALUES(`role_type`)"
         );
 
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(30) DEFAULT NULL AFTER `username`");
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `branch_location` VARCHAR(150) DEFAULT NULL AFTER `phone`");
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `date_hired` DATE DEFAULT NULL AFTER `branch_location`");
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `employment_status` VARCHAR(30) NOT NULL DEFAULT 'active' AFTER `date_hired`");
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `pin_hash` VARCHAR(255) DEFAULT NULL AFTER `employment_status`");
-        $mysqli->query("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `last_login_at` TIMESTAMP NULL DEFAULT NULL AFTER `pin_hash`");
+        $addColumn('user', 'username', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `email`');
+        $addColumn('user', 'phone', 'VARCHAR(30) DEFAULT NULL AFTER `username`');
+        $addColumn('user', 'branch_location', 'VARCHAR(150) DEFAULT NULL AFTER `phone`');
+        $addColumn('user', 'date_hired', 'DATE DEFAULT NULL AFTER `branch_location`');
+        $addColumn('user', 'employment_status', "VARCHAR(30) NOT NULL DEFAULT 'active' AFTER `date_hired`");
+        $addColumn('user', 'pin_hash', 'VARCHAR(255) DEFAULT NULL AFTER `employment_status`');
+        $addColumn('user', 'last_login_at', 'TIMESTAMP NULL DEFAULT NULL AFTER `pin_hash`');
 
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `user_device` (
@@ -248,6 +257,16 @@ function ensureSchema($mysqli) {
                 PRIMARY KEY (`user_id`, `permission_id`),
                 CONSTRAINT `fk_user_permission_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
                 CONSTRAINT `fk_user_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `permission`(`permission_id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `system_settings` (
+                `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+                `setting_value` TEXT NOT NULL,
+                `updated_by` INT DEFAULT NULL,
+                `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_settings_user` FOREIGN KEY (`updated_by`) REFERENCES `user`(`user_id`) ON DELETE SET NULL
             ) ENGINE=InnoDB"
         );
 
