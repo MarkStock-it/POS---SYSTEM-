@@ -226,6 +226,16 @@ function ensureSchema($mysqli) {
         $addColumn('transaction_item', 'unit_price', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
         $addColumn('transaction_item', 'line_total', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
 
+        $receiptTypeStmt = $mysqli->prepare('SELECT `DATA_TYPE` FROM `information_schema`.`COLUMNS` WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = ? AND `COLUMN_NAME` = ?');
+        $receiptTable = 'transaction';
+        $receiptColumn = 'receipt_no';
+        $receiptTypeStmt->bind_param('ss', $receiptTable, $receiptColumn);
+        $receiptTypeStmt->execute();
+        $receiptType = strtolower((string) ($receiptTypeStmt->get_result()->fetch_assoc()['DATA_TYPE'] ?? ''));
+        if ($receiptType !== 'varchar') {
+            $mysqli->query('ALTER TABLE `transaction` MODIFY COLUMN `receipt_no` VARCHAR(100) DEFAULT NULL');
+        }
+
         $addColumn('user', 'username', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `email`');
         $addColumn('user', 'phone', 'VARCHAR(30) DEFAULT NULL AFTER `username`');
         $addColumn('user', 'branch_location', 'VARCHAR(150) DEFAULT NULL AFTER `phone`');
