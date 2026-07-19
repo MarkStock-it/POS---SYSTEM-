@@ -293,6 +293,10 @@ body {
 
 .field-group select,
 .field-group input {
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
   padding: 14px 16px;
   border-radius: 16px;

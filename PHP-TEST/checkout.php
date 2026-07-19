@@ -27,12 +27,16 @@ try {
     $mysqli->begin_transaction();
 
     $taxRate = 8.0;
-    $settingStmt = $mysqli->prepare("SELECT `setting_value` FROM `system_settings` WHERE `setting_key` = 'taxRate' LIMIT 1");
-    $settingStmt->execute();
-    $settingRow = $settingStmt->get_result()->fetch_assoc();
-    if ($settingRow) {
-        $decodedTaxRate = json_decode($settingRow['setting_value'], true);
-        if (is_numeric($decodedTaxRate)) $taxRate = max(0, min(100, (float) $decodedTaxRate));
+    try {
+        $settingStmt = $mysqli->prepare("SELECT `setting_value` FROM `system_settings` WHERE `setting_key` = 'taxRate' LIMIT 1");
+        $settingStmt->execute();
+        $settingRow = $settingStmt->get_result()->fetch_assoc();
+        if ($settingRow) {
+            $decodedTaxRate = json_decode($settingRow['setting_value'], true);
+            if (is_numeric($decodedTaxRate)) $taxRate = max(0, min(100, (float) $decodedTaxRate));
+        }
+    } catch (Throwable $settingsError) {
+        error_log('Checkout tax setting unavailable; using default: ' . $settingsError->getMessage());
     }
 
     $subtotal = 0.0;
@@ -89,7 +93,11 @@ try {
 
     $itemStmt->close();
     $stmt->close();
-    writeAudit($mysqli, $user, 'Completed sale ' . $receiptNo, 'transaction', (string) $transactionId);
+    try {
+        writeAudit($mysqli, $user, 'Completed sale ' . $receiptNo, 'transaction', (string) $transactionId);
+    } catch (Throwable $auditError) {
+        error_log('Checkout audit write failed: ' . $auditError->getMessage());
+    }
     $mysqli->commit();
     echo json_encode(['transactionId' => $transactionId, 'receiptNo' => $receiptNo, 'subtotal' => round($subtotal, 2), 'discount' => round($discount, 2), 'tax' => $tax, 'total' => $total, 'changeAmount' => $changeAmount]);
 } catch (Throwable $error) {

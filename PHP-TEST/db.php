@@ -213,6 +213,19 @@ function ensureSchema($mysqli) {
              ON DUPLICATE KEY UPDATE `role_type` = VALUES(`role_type`)"
         );
 
+        // Reconcile installations created with the older checkout schema.
+        $addColumn('transaction', 'user_id', 'INT DEFAULT NULL');
+        $addColumn('transaction', 'receipt_no', 'VARCHAR(100) DEFAULT NULL');
+        $addColumn('transaction', 'payment_method', "VARCHAR(50) DEFAULT 'Unknown'");
+        $addColumn('transaction', 'amount_tendered', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction', 'transaction_status', "VARCHAR(20) NOT NULL DEFAULT 'completed'");
+        $addColumn('transaction', 'subtotal', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction', 'tax', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction', 'total', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction', 'change_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction_item', 'unit_price', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+        $addColumn('transaction_item', 'line_total', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+
         $addColumn('user', 'username', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `email`');
         $addColumn('user', 'phone', 'VARCHAR(30) DEFAULT NULL AFTER `username`');
         $addColumn('user', 'branch_location', 'VARCHAR(150) DEFAULT NULL AFTER `phone`');
