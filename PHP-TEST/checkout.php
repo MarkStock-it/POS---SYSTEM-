@@ -16,7 +16,8 @@ $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $items = $data['items'] ?? [];
 $paymentMethod = trim((string) ($data['paymentMethod'] ?? 'Unknown'));
 $discountPercent = (float) ($data['discountPercent'] ?? 0);
-$amountTendered = (float) ($data['amountTendered'] ?? 0);
+$hasAmountTendered = array_key_exists('amountTendered', $data) && is_numeric($data['amountTendered']);
+$amountTendered = $hasAmountTendered ? (float) $data['amountTendered'] : null;
 
 if (!is_array($items) || count($items) === 0) {
     checkoutError(400, 'Cart is empty');
@@ -53,6 +54,9 @@ try {
     $discount = max(0, min($discountPercent, 100)) * $subtotal / 100;
     $tax = round(($subtotal - $discount) * ($taxRate / 100), 2);
     $total = round($subtotal - $discount + $tax, 2);
+    // Older cached clients did not send this field. Treat those sales as exact
+    // tender so a cache-busting rollout does not strand an in-progress cart.
+    if ($amountTendered === null) $amountTendered = $total;
     if ($amountTendered < $total && strtolower($paymentMethod) === 'cash') throw new InvalidArgumentException('Amount tendered is less than the total.');
     $changeAmount = round(max(0, $amountTendered - $total), 2);
 

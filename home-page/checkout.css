@@ -282,6 +282,10 @@ body {
   margin-bottom: var(--space-md);
 }
 
+.field-group[hidden] {
+  display: none;
+}
+
 .field-group span {
   font-size: 0.95rem;
   color: var(--muted);
