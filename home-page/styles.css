@@ -652,6 +652,55 @@ html[data-theme="dark"] .page-inventory .inventory-table th { background:#111c2d
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:nth-child(odd) { background:rgba(15,23,42,.72); }
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:nth-child(even) { background:rgba(30,41,59,.45); }
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:hover { background:rgba(37,99,235,.12); }
+html[data-theme="dark"] .page-inventory .inventory-table-toolbar {
+  background:rgba(15,23,42,.88);
+  border-color:rgba(148,163,184,.18);
+  color:var(--text);
+}
+html[data-theme="dark"] .page-inventory .field-group span,
+html[data-theme="dark"] .page-inventory .inventory-table-toolbar span { color:#cbd5e1; }
+html[data-theme="dark"] .page-inventory .field-group input,
+html[data-theme="dark"] .page-inventory .stock-check-input {
+  background:#111827;
+  border-color:rgba(148,163,184,.24);
+  color:#f8fafc;
+  box-shadow:inset 0 1px 2px rgba(2,6,23,.32);
+}
+html[data-theme="dark"] .page-inventory .field-group input::placeholder,
+html[data-theme="dark"] .page-inventory .stock-check-input::placeholder { color:#94a3b8; }
+html[data-theme="dark"] .page-inventory .field-group input:hover,
+html[data-theme="dark"] .page-inventory .field-group input:focus,
+html[data-theme="dark"] .page-inventory .stock-check-input:hover,
+html[data-theme="dark"] .page-inventory .stock-check-input:focus {
+  background:#1e293b;
+  border-color:rgba(96,165,250,.5);
+}
+html[data-theme="dark"] .page-inventory .filter-buttons { background:#111827; }
+html[data-theme="dark"] .page-inventory .filter-buttons .pill,
+html[data-theme="dark"] .page-inventory .category-chip {
+  background:rgba(30,41,59,.78);
+  border-color:rgba(148,163,184,.18);
+  color:#cbd5e1;
+}
+html[data-theme="dark"] .page-inventory .filter-buttons .pill:hover,
+html[data-theme="dark"] .page-inventory .category-chip:hover {
+  background:#263449;
+  color:#f8fafc;
+}
+html[data-theme="dark"] .page-inventory .filter-buttons .pill.active {
+  background:rgba(37,99,235,.28);
+  border-color:rgba(96,165,250,.42);
+  color:#bfdbfe;
+}
+html[data-theme="dark"] .page-inventory .table-image {
+  background:#1e293b;
+  border-color:rgba(148,163,184,.18);
+}
+html[data-theme="dark"] .page-inventory .stock-save-all:disabled {
+  background:#334155;
+  color:#94a3b8;
+  opacity:1;
+}
 
 /* toast */
 .toast { position: fixed; right: 24px; bottom:24px; background: rgba(15,23,42,0.95); color: #fff; padding: 12px 16px; border-radius: 14px; box-shadow: 0 12px 36px rgba(15,23,42,0.12); z-index:220; opacity:0; transform: translateY(8px); transition: opacity var(--transition-fast) ease, transform var(--transition-fast) ease; }
