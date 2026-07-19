@@ -148,19 +148,6 @@ function renderTotals() {
   document.getElementById('summaryDiscount').textContent = formatCurrency(checkoutState.totals.discount);
   document.getElementById('summaryTax').textContent = formatCurrency(checkoutState.totals.tax);
   document.getElementById('summaryTotal').textContent = formatCurrency(checkoutState.totals.total);
-  const tenderedInput = document.getElementById('amountTenderedInput');
-  if (tenderedInput && tenderedInput.value === '') tenderedInput.value = Number(checkoutState.totals.total || 0).toFixed(2);
-}
-
-function updateTenderedField() {
-  const isCash = checkoutState.paymentMethod.toLowerCase() === 'cash';
-  const group = document.getElementById('amountTenderedGroup');
-  const input = document.getElementById('amountTenderedInput');
-  if (group) group.hidden = !isCash;
-  if (input) {
-    input.required = isCash;
-    if (isCash && input.value === '') input.value = Number(checkoutState.totals.total || 0).toFixed(2);
-  }
 }
 
 function loadCheckoutData() {
@@ -205,19 +192,8 @@ function submitCheckout() {
     return;
   }
 
-  const isCash = checkoutState.paymentMethod.toLowerCase() === 'cash';
-  const amountTendered = isCash
-    ? Number(document.getElementById('amountTenderedInput')?.value)
-    : Number(checkoutState.totals.total || 0);
-  if (!Number.isFinite(amountTendered) || amountTendered < Number(checkoutState.totals.total || 0)) {
-    showToast('Cash received must cover the order total.', 'danger');
-    document.getElementById('amountTenderedInput')?.focus();
-    return;
-  }
-
   const payload = {
     paymentMethod: checkoutState.paymentMethod,
-    amountTendered,
     discountPercent: Number(checkoutState.discountPercent || 0),
     taxRate: Number(getPosSettings().taxRate ?? 8),
     items: checkoutState.cart.map((item) => ({
@@ -257,7 +233,6 @@ function submitCheckout() {
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('paymentMethodSelect')?.addEventListener('change', (event) => {
     checkoutState.paymentMethod = event.target.value;
-    updateTenderedField();
   });
 
   document.getElementById('backButton')?.addEventListener('click', () => {
@@ -272,5 +247,4 @@ window.addEventListener('DOMContentLoaded', () => {
 
   themeUtils.initTheme();
   loadCheckoutData();
-  updateTenderedField();
 });
