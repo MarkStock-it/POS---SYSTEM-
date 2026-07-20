@@ -397,6 +397,135 @@ tbody tr:last-child td { border-bottom: 0; }
 .stock-adjust-save:hover { transform:translateY(-1px); }
 .stock-adjust-cancel:disabled, .stock-adjust-save:disabled { opacity:.55; cursor:wait; }
 
+/* Dashboard dark mode. Keep every shell and floating surface on the same
+   palette; the shared cashier theme only covers the content cards. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #080f1d;
+  --text: #f8fafc;
+  --muted: #aebbd0;
+  --card: rgba(15, 23, 42, .84);
+  --card-strong: #111a2b;
+  --glass-border: rgba(148, 163, 184, .17);
+  --shadow-soft: 0 10px 32px rgba(2, 6, 23, .3);
+  --shadow-layered: 0 22px 48px rgba(2, 6, 23, .42), 0 2px 7px rgba(2, 6, 23, .26);
+}
+
+html[data-theme="dark"] body {
+  background: radial-gradient(circle at 14% 3%, rgba(37, 99, 235, .14), transparent 30%), var(--bg);
+}
+
+html[data-theme="dark"] .sidebar {
+  background: rgba(10, 18, 32, .96);
+  border-right-color: var(--glass-border);
+  box-shadow: 10px 0 34px rgba(2, 6, 23, .22);
+}
+
+html[data-theme="dark"] .topbar {
+  background: rgba(10, 18, 32, .92);
+  border-bottom-color: var(--glass-border);
+  box-shadow: 0 8px 28px rgba(2, 6, 23, .18);
+}
+
+html[data-theme="dark"] .nav-item:hover {
+  background: rgba(59, 130, 246, .13);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .nav-item.active {
+  background: rgba(37, 99, 235, .2);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .icon-btn,
+html[data-theme="dark"] .icon-toggle,
+html[data-theme="dark"] .notification-btn,
+html[data-theme="dark"] .secondary-button,
+html[data-theme="dark"] .action-btn,
+html[data-theme="dark"] .filter-btn {
+  background: rgba(15, 23, 42, .9);
+  border-color: rgba(148, 163, 184, .2);
+  color: #cbd5e1;
+  box-shadow: 0 5px 16px rgba(2, 6, 23, .22);
+}
+
+html[data-theme="dark"] .icon-btn:hover,
+html[data-theme="dark"] .icon-toggle:hover,
+html[data-theme="dark"] .notification-btn:hover,
+html[data-theme="dark"] .secondary-button:hover,
+html[data-theme="dark"] .action-btn:hover,
+html[data-theme="dark"] .filter-btn:hover {
+  border-color: rgba(96, 165, 250, .42);
+  background: rgba(30, 64, 175, .2);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .metric-card,
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .inventory-main {
+  background: linear-gradient(180deg, rgba(17, 27, 46, .94), rgba(12, 21, 37, .94));
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme="dark"] th,
+html[data-theme="dark"] .inventory-table th {
+  background: rgba(30, 41, 59, .9);
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] td,
+html[data-theme="dark"] .inventory-table td,
+html[data-theme="dark"] .panel-header,
+html[data-theme="dark"] .activity-item {
+  border-bottom-color: rgba(148, 163, 184, .14);
+}
+
+html[data-theme="dark"] tbody tr:nth-child(odd) { background: rgba(148, 163, 184, .035); }
+html[data-theme="dark"] tbody tr:hover { background: rgba(59, 130, 246, .1); }
+
+html[data-theme="dark"] .report-item,
+html[data-theme="dark"] .role-picker-popover,
+html[data-theme="dark"] .stock-adjust-popover,
+html[data-theme="dark"] .dashboard-toast {
+  background: rgba(15, 23, 42, .98);
+  border-color: rgba(148, 163, 184, .2);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, .48);
+}
+
+html[data-theme="dark"] .role-choice-bubble {
+  background: rgba(30, 41, 59, .82);
+  border-color: rgba(148, 163, 184, .18);
+}
+
+html[data-theme="dark"] .role-choice-bubble:hover,
+html[data-theme="dark"] .role-choice-bubble.selected {
+  background: rgba(37, 99, 235, .2);
+  border-color: rgba(96, 165, 250, .4);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .stock-adjust-input-wrap input,
+html[data-theme="dark"] .stock-adjust-cancel {
+  background: #0b1424;
+  border-color: rgba(148, 163, 184, .22);
+}
+
+html[data-theme="dark"] .dashboard-toast-icon {
+  background: color-mix(in srgb, var(--toast-color) 18%, #0f172a);
+}
+
+html[data-theme="dark"] .dashboard-toast-close:hover { background: rgba(148, 163, 184, .12); }
+html[data-theme="dark"] .status-dot.online { color: #34d399; }
+html[data-theme="dark"] .status-dot.offline { color: #f87171; }
+html[data-theme="dark"] .topbar-breadcrumb,
+html[data-theme="dark"] .nav-section-label,
+html[data-theme="dark"] .page-subtitle,
+html[data-theme="dark"] .section-heading p,
+html[data-theme="dark"] .report-meta,
+html[data-theme="dark"] .stock-label { color: var(--muted); }
+
 @media (prefers-reduced-motion: reduce) {
   .dashboard-toast.visible, .dashboard-toast.leaving, .role-choice-bubble { animation-duration:.01ms; animation-delay:0ms; }
   .stock-adjust-popover { transition-duration:.01ms; }
