@@ -79,37 +79,44 @@ function renderPagination() {
   const totalItems = checkoutState.cart.length;
   const totalPages = Math.ceil(totalItems / paginationState.pageSize);
 
-  if (totalPages <= 1) {
-    pagination.innerHTML = '';
-    return;
+  const maxPage = Math.max(1, totalPages);
+  paginationState.currentPage = Math.min(Math.max(paginationState.currentPage, 1), maxPage);
+  pagination.replaceChildren();
+  const changePage = (page) => { paginationState.currentPage = page; renderCheckoutItems(); };
+  const addButton = (label, page, disabled, active = false) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = `pagination-button${active ? ' active' : ''}`;
+    button.textContent = label; button.disabled = disabled; button.addEventListener('click', () => changePage(page)); pagination.appendChild(button);
+  };
+  const addEllipsis = () => {
+    const ellipsis = document.createElement('span'); ellipsis.className = 'pagination-ellipsis'; ellipsis.textContent = '…';
+    ellipsis.setAttribute('aria-hidden', 'true'); pagination.appendChild(ellipsis);
+  };
+  addButton('Prev', paginationState.currentPage - 1, paginationState.currentPage <= 1);
+  if (maxPage <= 4) {
+    for (let page = 1; page <= maxPage; page += 1) addButton(String(page), page, false, paginationState.currentPage === page);
+  } else {
+    const visiblePages = [...new Set([1, paginationState.currentPage - 1, paginationState.currentPage, paginationState.currentPage + 1, paginationState.currentPage + 2])]
+      .filter((page) => page >= 1 && page < maxPage).sort((a, b) => a - b);
+    let previous = 0;
+    visiblePages.forEach((page) => { if (page - previous > 1) addEllipsis(); addButton(String(page), page, false, paginationState.currentPage === page); previous = page; });
+    if (maxPage - previous > 1) addEllipsis();
+    const jumpInput = document.createElement('input');
+    jumpInput.className = `pagination-jump${paginationState.currentPage === maxPage ? ' active' : ''}`;
+    jumpInput.type = 'number'; jumpInput.min = '1'; jumpInput.max = String(maxPage); jumpInput.value = String(maxPage);
+    jumpInput.setAttribute('aria-label', `Go to page, maximum ${maxPage}`); jumpInput.title = `Enter a page from 1 to ${maxPage}`;
+    const submitJump = () => {
+      const page = Number(jumpInput.value);
+      if (!Number.isInteger(page) || page < 1 || page > maxPage) {
+        showToast(`Enter a page number from 1 to ${maxPage}.`, 'danger'); jumpInput.value = String(maxPage); jumpInput.focus(); jumpInput.select(); return;
+      }
+      changePage(page);
+    };
+    jumpInput.addEventListener('focus', () => jumpInput.select());
+    jumpInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); submitJump(); } });
+    jumpInput.addEventListener('change', submitJump);
+    pagination.appendChild(jumpInput);
   }
-
-  const buttons = [];
-  buttons.push(`
-    <button type="button" class="pagination-button" ${paginationState.currentPage === 1 ? 'disabled' : ''} data-page="${paginationState.currentPage - 1}">Prev</button>
-  `);
-
-  for (let i = 1; i <= totalPages; i += 1) {
-    buttons.push(`
-      <button type="button" class="pagination-button${paginationState.currentPage === i ? ' active' : ''}" data-page="${i}">${i}</button>
-    `);
-  }
-
-  buttons.push(`
-    <button type="button" class="pagination-button" ${paginationState.currentPage === totalPages ? 'disabled' : ''} data-page="${paginationState.currentPage + 1}">Next</button>
-  `);
-
-  pagination.innerHTML = buttons.join('');
-  pagination.querySelectorAll('button[data-page]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const page = Number(button.getAttribute('data-page'));
-      if (!Number.isFinite(page) || page < 1) return;
-      const maxPage = Math.max(1, totalPages);
-      paginationState.currentPage = Math.min(Math.max(page, 1), maxPage);
-      renderCheckoutItems();
-      renderPagination();
-    });
-  });
+  addButton('Next', paginationState.currentPage + 1, paginationState.currentPage >= maxPage);
 }
 
 function renderCheckoutItems() {

@@ -504,6 +504,10 @@ html[data-theme="dark"] .remove-button {
 .app-page-button { min-width: 36px; min-height: 36px; padding: 7px 10px; border: 1px solid rgba(148,163,184,.28); border-radius: 10px; color: var(--text); background: var(--card-strong, #fff); cursor: pointer; }
 .app-page-button.active { border-color: var(--primary); color: #fff; background: var(--primary); }
 .app-page-button:disabled { opacity: .45; cursor: not-allowed; }
+.app-page-ellipsis { display: inline-grid; min-width: 24px; min-height: 36px; place-items: center; color: var(--muted); font-weight: 800; }
+.app-page-jump { width: 58px; min-height: 36px; padding: 7px 8px; border: 1px solid rgba(148,163,184,.28); border-radius: 10px; outline: none; color: var(--text); background: var(--card-strong, #fff); text-align: center; font-weight: 750; }
+.app-page-jump:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.app-page-jump.active { border-color: var(--primary); color: #fff; background: var(--primary); }
 .secondary-actions { display:grid; gap:12px; }
 
 /* inventory layout */

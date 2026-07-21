@@ -272,18 +272,7 @@
     return { items: items.slice(start, start + pageSize), page: currentPage, pageSize, total: items.length, totalPages };
   }
 
-  function renderPagination(targetId, pageData, onPageChange) {
-    const target = document.getElementById(targetId);
-    if (!target) return;
-    const anchor = target.closest('table') || target;
-    let pagination = document.getElementById(`${targetId}Pagination`);
-    if (!pagination) {
-      pagination = document.createElement('nav');
-      pagination.id = `${targetId}Pagination`;
-      pagination.className = 'app-pagination';
-      pagination.setAttribute('aria-label', `${targetId} pagination`);
-      anchor.insertAdjacentElement('afterend', pagination);
-    }
+  function populatePagination(pagination, pageData, onPageChange) {
     pagination.replaceChildren();
     if (!pageData) return;
     const addButton = (label, destination, disabled, active = false) => {
@@ -295,9 +284,49 @@
       button.addEventListener('click', () => onPageChange(destination));
       pagination.appendChild(button);
     };
+    const addEllipsis = () => {
+      const ellipsis = document.createElement('span');
+      ellipsis.className = 'app-page-ellipsis'; ellipsis.textContent = '…'; ellipsis.setAttribute('aria-hidden', 'true');
+      pagination.appendChild(ellipsis);
+    };
     addButton('Prev', pageData.page - 1, pageData.page <= 1);
-    for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+    if (pageData.totalPages <= 4) {
+      for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+    } else {
+      const visiblePages = [...new Set([1, pageData.page - 1, pageData.page, pageData.page + 1, pageData.page + 2])]
+        .filter((index) => index >= 1 && index < pageData.totalPages).sort((a, b) => a - b);
+      let previous = 0;
+      visiblePages.forEach((index) => { if (index - previous > 1) addEllipsis(); addButton(String(index), index, false, index === pageData.page); previous = index; });
+      if (pageData.totalPages - previous > 1) addEllipsis();
+      const jumpInput = document.createElement('input');
+      jumpInput.className = `app-page-jump${pageData.page === pageData.totalPages ? ' active' : ''}`;
+      jumpInput.type = 'number'; jumpInput.min = '1'; jumpInput.max = String(pageData.totalPages); jumpInput.value = String(pageData.totalPages);
+      jumpInput.setAttribute('aria-label', `Go to page, maximum ${pageData.totalPages}`); jumpInput.title = `Enter a page from 1 to ${pageData.totalPages}`;
+      const submitJump = () => {
+        const destination = Number(jumpInput.value);
+        if (!Number.isInteger(destination) || destination < 1 || destination > pageData.totalPages) {
+          showDashboardToast(`Enter a page number from 1 to ${pageData.totalPages}.`, 'warning'); jumpInput.value = String(pageData.totalPages); jumpInput.focus(); jumpInput.select(); return;
+        }
+        onPageChange(destination);
+      };
+      jumpInput.addEventListener('focus', () => jumpInput.select());
+      jumpInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); submitJump(); } });
+      jumpInput.addEventListener('change', submitJump);
+      pagination.appendChild(jumpInput);
+    }
     addButton('Next', pageData.page + 1, pageData.page >= pageData.totalPages);
+  }
+
+  function renderPagination(targetId, pageData, onPageChange) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    const anchor = target.closest('table') || target;
+    let pagination = document.getElementById(`${targetId}Pagination`);
+    if (!pagination) {
+      pagination = document.createElement('nav'); pagination.id = `${targetId}Pagination`; pagination.className = 'app-pagination';
+      pagination.setAttribute('aria-label', `${targetId} pagination`); anchor.insertAdjacentElement('afterend', pagination);
+    }
+    populatePagination(pagination, pageData, onPageChange);
   }
 
   async function loadActivityFeed(targetId = 'activityFeed', page = 1) {
@@ -766,20 +795,7 @@
 
       if (!pagination) return;
       const totalPages = Math.max(1, Number(result.totalPages) || 1);
-      pagination.replaceChildren();
-      if (totalPages <= 1) return;
-      const addButton = (label, targetPage, disabled, active = false) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `report-page-button${active ? ' active' : ''}`;
-        button.textContent = label;
-        button.disabled = disabled;
-        button.addEventListener('click', () => loadReports(containerId, paginationId, targetPage));
-        pagination.appendChild(button);
-      };
-      addButton('Prev', page - 1, page <= 1);
-      for (let index = 1; index <= totalPages; index += 1) addButton(String(index), index, false, index === page);
-      addButton('Next', page + 1, page >= totalPages);
+      populatePagination(pagination, { page, pageSize: 5, total: Number(result.total) || 0, totalPages }, (targetPage) => loadReports(containerId, paginationId, targetPage));
     } catch (error) {
       container.innerHTML = '<div class="empty-state">Unable to load reports.</div>';
       if (pagination) pagination.replaceChildren();

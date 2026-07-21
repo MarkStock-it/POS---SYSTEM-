@@ -40,15 +40,47 @@ function renderPageControls(targetId, pageKey, pageData, rerender, canChangePage
     controls.setAttribute('aria-label', `${targetId} pagination`); (target.closest('table') || target).insertAdjacentElement('afterend', controls);
   }
   controls.replaceChildren();
-  if (pageData.totalPages <= 1) return;
+  const changePage = (destination) => {
+    if (canChangePage && !canChangePage()) return false;
+    state.pagination[pageKey] = destination;
+    rerender();
+    return true;
+  };
   const addButton = (label, destination, disabled, active = false) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = `app-page-button${active ? ' active' : ''}`;
     button.textContent = label; button.disabled = disabled;
-    button.addEventListener('click', () => { if (canChangePage && !canChangePage()) return; state.pagination[pageKey] = destination; rerender(); });
+    button.addEventListener('click', () => changePage(destination));
     controls.appendChild(button);
   };
+  const addEllipsis = () => {
+    const ellipsis = document.createElement('span'); ellipsis.className = 'app-page-ellipsis'; ellipsis.textContent = '…';
+    ellipsis.setAttribute('aria-hidden', 'true'); controls.appendChild(ellipsis);
+  };
   addButton('Prev', pageData.page - 1, pageData.page <= 1);
-  for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+  if (pageData.totalPages <= 4) {
+    for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+  } else {
+    const visiblePages = [...new Set([1, pageData.page - 1, pageData.page, pageData.page + 1, pageData.page + 2])]
+      .filter((index) => index >= 1 && index < pageData.totalPages).sort((a, b) => a - b);
+    let previous = 0;
+    visiblePages.forEach((index) => { if (index - previous > 1) addEllipsis(); addButton(String(index), index, false, index === pageData.page); previous = index; });
+    if (pageData.totalPages - previous > 1) addEllipsis();
+    const jumpInput = document.createElement('input');
+    jumpInput.className = `app-page-jump${pageData.page === pageData.totalPages ? ' active' : ''}`;
+    jumpInput.type = 'number'; jumpInput.min = '1'; jumpInput.max = String(pageData.totalPages); jumpInput.value = String(pageData.totalPages);
+    jumpInput.setAttribute('aria-label', `Go to page, maximum ${pageData.totalPages}`); jumpInput.title = `Enter a page from 1 to ${pageData.totalPages}`;
+    const submitJump = () => {
+      const destination = Number(jumpInput.value);
+      if (!Number.isInteger(destination) || destination < 1 || destination > pageData.totalPages) {
+        showToast(`Enter a page number from 1 to ${pageData.totalPages}.`, 'danger'); jumpInput.value = String(pageData.totalPages); jumpInput.focus(); jumpInput.select(); return;
+      }
+      changePage(destination);
+    };
+    jumpInput.addEventListener('focus', () => jumpInput.select());
+    jumpInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); submitJump(); } });
+    jumpInput.addEventListener('change', submitJump);
+    controls.appendChild(jumpInput);
+  }
   addButton('Next', pageData.page + 1, pageData.page >= pageData.totalPages);
 }
 
