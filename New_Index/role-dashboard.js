@@ -285,7 +285,7 @@
       anchor.insertAdjacentElement('afterend', pagination);
     }
     pagination.replaceChildren();
-    if (!pageData || pageData.totalPages <= 1) return;
+    if (!pageData) return;
     const addButton = (label, destination, disabled, active = false) => {
       const button = document.createElement('button');
       button.type = 'button';
