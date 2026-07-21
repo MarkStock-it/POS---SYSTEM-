@@ -110,14 +110,55 @@ function leaveInventoryManager() {
   window.location.href = dashboardPath;
 }
 
-function scanBarcode(barcode) {
-  const product = state.products.find((item) => item.barcode === barcode || item.sku === barcode);
-  if (product) {
-    addToCart(product.id);
-    showToast(`${product.name} added to cart`);
-    return;
+function normalizeBarcode(value) {
+  return String(value ?? '').trim();
+}
+
+function findProductByBarcode(products, barcode) {
+  const normalizedBarcode = normalizeBarcode(barcode).toLowerCase();
+  if (!normalizedBarcode) return null;
+
+  return products.find((item) => (
+    normalizeBarcode(item.barcode).toLowerCase() === normalizedBarcode
+    || normalizeBarcode(item.sku).toLowerCase() === normalizedBarcode
+  )) || null;
+}
+
+async function scanBarcode(barcode) {
+  const normalizedBarcode = normalizeBarcode(barcode);
+  if (!normalizedBarcode) {
+    showToast('The scanner sent an empty barcode.', 'danger');
+    return false;
   }
-  showToast('Barcode not found in inventory', 'danger');
+
+  // The visible catalog may contain only the current search results. Try it
+  // first, then query the inventory so scans still work while a filter is set
+  // or while the initial product request is still finishing.
+  let product = findProductByBarcode(state.products, normalizedBarcode);
+  if (!product) {
+    try {
+      const response = await fetch(
+        phpApi('products.php', `?search=${encodeURIComponent(normalizedBarcode)}`),
+        { headers: getApiHeaders() },
+      );
+      const products = await parseJsonResponse(response);
+      if (!Array.isArray(products)) throw new Error('Invalid product response');
+      product = findProductByBarcode(products, normalizedBarcode);
+    } catch (error) {
+      console.error('Unable to look up scanned barcode:', error);
+      showToast('Unable to look up the scanned barcode. Try again.', 'danger');
+      return false;
+    }
+  }
+
+  if (!product) {
+    showToast(`Barcode ${normalizedBarcode} was not found in inventory.`, 'danger');
+    return false;
+  }
+
+  addToCart(product.id, product);
+  showToast(`${product.name} added to cart`);
+  return true;
 }
 
 function saveCartState() {
@@ -220,7 +261,6 @@ function handleScannerMessage(message) {
     const barcode = String(message.barcode || '').trim();
     if (barcode) {
       scanBarcode(barcode);
-      showToast(`Scanned barcode: ${barcode}`);
     }
   } else if (message.type === 'status') {
     updateScannerStatus(message.status, message.detail || '');
@@ -490,14 +530,14 @@ function calculateTotals() {
   return { subtotal, discount, tax, total };
 }
 
-function addToCart(productId) {
-  const product = state.products.find((item) => String(item.id) === String(productId));
+function addToCart(productId, productOverride = null) {
+  const product = productOverride || state.products.find((item) => String(item.id) === String(productId));
   if (!product) {
     showToast('Product not found in inventory', 'danger');
     return;
   }
 
-  const cartItem = state.cart.find((item) => item.productId === productId);
+  const cartItem = state.cart.find((item) => String(item.productId) === String(product.id));
   if (cartItem) {
     cartItem.quantity += 1;
   } else {
