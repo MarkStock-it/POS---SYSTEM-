@@ -48,7 +48,9 @@ function ensureSchema($mysqli) {
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `user` (
                 `user_id` INT AUTO_INCREMENT PRIMARY KEY,
-                `full_name` VARCHAR(150) NOT NULL,
+                `first_name` VARCHAR(100) NOT NULL,
+                `middle_name` VARCHAR(100) DEFAULT NULL,
+                `last_name` VARCHAR(100) NOT NULL,
                 `password_hash` VARCHAR(255) NOT NULL,
                 `role_id` INT NOT NULL,
                 `status` VARCHAR(20) NOT NULL DEFAULT 'active',
@@ -283,6 +285,9 @@ function ensureSchema($mysqli) {
             $mysqli->query('ALTER TABLE `transaction` MODIFY COLUMN `receipt_no` VARCHAR(100) DEFAULT NULL');
         }
 
+        $addColumn('user', 'first_name', 'VARCHAR(100) DEFAULT NULL AFTER `user_id`');
+        $addColumn('user', 'middle_name', 'VARCHAR(100) DEFAULT NULL AFTER `first_name`');
+        $addColumn('user', 'last_name', 'VARCHAR(100) DEFAULT NULL AFTER `middle_name`');
         $addColumn('user', 'username', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `email`');
         $addColumn('user', 'phone', 'VARCHAR(30) DEFAULT NULL AFTER `username`');
         $addColumn('user', 'branch_location', 'VARCHAR(150) DEFAULT NULL AFTER `phone`');

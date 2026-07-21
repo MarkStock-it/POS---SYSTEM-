@@ -9,7 +9,7 @@ function apiJson($status, $payload) {
 function currentUser($mysqli) {
     $userId = (int) ($_SESSION['pos_user_id'] ?? 0);
     if ($userId <= 0) return null;
-    $stmt = $mysqli->prepare('SELECT `u`.`user_id` AS `id`, `u`.`full_name` AS `fullName`, `u`.`email`, `u`.`username`, `u`.`status`, `r`.`role_type` AS `role` FROM `user` `u` JOIN `role` `r` ON `r`.`role_id` = `u`.`role_id` WHERE `u`.`user_id` = ? LIMIT 1');
+    $stmt = $mysqli->prepare('SELECT `u`.`user_id` AS `id`, TRIM(CONCAT_WS(\' \', `u`.`first_name`, NULLIF(`u`.`middle_name`, \'\'), `u`.`last_name`)) AS `fullName`, `u`.`first_name` AS `firstName`, `u`.`middle_name` AS `middleName`, `u`.`last_name` AS `lastName`, `u`.`email`, `u`.`username`, `u`.`status`, `r`.`role_type` AS `role` FROM `user` `u` JOIN `role` `r` ON `r`.`role_id` = `u`.`role_id` WHERE `u`.`user_id` = ? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();

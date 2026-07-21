@@ -14,7 +14,7 @@ if ($identifier === '' || $password === '') {
 }
 
 $stmt = $mysqli->prepare(
-    'SELECT `u`.`user_id` AS `id`, `u`.`full_name`, `u`.`email`, `u`.`username`, `u`.`password_hash`, `u`.`last_login_at`, `u`.`status`, `u`.`employment_status`, `r`.`role_type` AS `role` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE LOWER(`u`.`email`) = ? OR LOWER(`u`.`username`) = ? LIMIT 1'
+    'SELECT `u`.`user_id` AS `id`, `u`.`first_name`, `u`.`middle_name`, `u`.`last_name`, TRIM(CONCAT_WS(\' \', `u`.`first_name`, NULLIF(`u`.`middle_name`, \'\'), `u`.`last_name`)) AS `full_name`, `u`.`email`, `u`.`username`, `u`.`password_hash`, `u`.`last_login_at`, `u`.`status`, `u`.`employment_status`, `r`.`role_type` AS `role` FROM `user` AS `u` JOIN `role` AS `r` ON `u`.`role_id` = `r`.`role_id` WHERE LOWER(`u`.`email`) = ? OR LOWER(`u`.`username`) = ? LIMIT 1'
 );
 $needle = strtolower($identifier);
 $stmt->bind_param('ss', $needle, $needle);
@@ -77,6 +77,9 @@ $loginTimestamp = $loginTimestamp ?: date('Y-m-d H:i:s');
 echo json_encode([
     'id' => (int) $user['id'],
     'fullName' => $user['full_name'],
+    'firstName' => $user['first_name'],
+    'middleName' => $user['middle_name'],
+    'lastName' => $user['last_name'],
     'email' => $user['email'],
     'username' => $user['username'],
     'role' => $normalizedRole,

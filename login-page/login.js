@@ -226,6 +226,9 @@ loginForm.addEventListener("submit", async (e) => {
       const existingIndex = storedUsers.findIndex((storedUser) => String(storedUser.email || "").toLowerCase() === String(backendUser.email || "").toLowerCase());
       const syncedUser = {
         fullName: backendUser.fullName || backendUser.full_name || backendUser.name || "",
+        firstName: backendUser.firstName || "",
+        middleName: backendUser.middleName || "",
+        lastName: backendUser.lastName || "",
         email: backendUser.email || "",
         username: backendUser.username || backendUser.email || "",
         role: normalizedRole,
@@ -268,6 +271,9 @@ loginForm.addEventListener("submit", async (e) => {
     setCurrentUser({
       id: user.id,
       fullName: user.fullName || user.full_name || user.name || "",
+      firstName: user.firstName || "",
+      middleName: user.middleName || "",
+      lastName: user.lastName || "",
       email: user.email,
       username: user.username,
       role: normalizedRole,

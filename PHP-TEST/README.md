@@ -21,5 +21,7 @@ Create a database named `pos_system` (or set DB_NAME in your environment) and en
 - DB_NAME=pos_system
 
 ## Demo credentials
-- superadmin@pos.com / superadmin123
-- demo@pos.com / password
+- cashier / 123123
+- manager / 123123
+- admin / 123123
+- superadmin / 123123

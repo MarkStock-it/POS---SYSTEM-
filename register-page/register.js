@@ -2,7 +2,9 @@
 // FORM ELEMENTS
 // ============================================
 const registerForm = document.getElementById("registerForm");
-const fullNameInput = document.getElementById("fullName");
+const firstNameInput = document.getElementById("firstName");
+const middleNameInput = document.getElementById("middleName");
+const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const usernameInput = document.getElementById("username");
 const phoneInput = document.getElementById("phone");
@@ -48,7 +50,7 @@ setupPasswordToggle(confirmPasswordInput, toggleConfirmPasswordBtn, "eyeOpenIcon
 // ============================================
 // FORM VALIDATION
 // ============================================
-function validateFullName(name) {
+function validateName(name) {
   return name.trim().length >= 2;
 }
 
@@ -92,22 +94,31 @@ function showFieldSuccess(field) {
 }
 
 // Real-time validation
-fullNameInput.addEventListener("blur", () => {
-  const value = fullNameInput.value.trim();
+firstNameInput.addEventListener("blur", () => {
+  const value = firstNameInput.value.trim();
   if (!value) {
-    showFieldError(fullNameInput, "Full name is required");
-  } else if (!validateFullName(value)) {
-    showFieldError(fullNameInput, "Full name must be at least 2 characters");
+    showFieldError(firstNameInput, "First name is required");
+  } else if (!validateName(value)) {
+    showFieldError(firstNameInput, "First name must be at least 2 characters");
   } else {
-    showFieldSuccess(fullNameInput);
+    showFieldSuccess(firstNameInput);
   }
 });
 
-fullNameInput.addEventListener("input", () => {
-  if (fullNameInput.classList.contains("error")) {
-    clearFieldError(fullNameInput);
+lastNameInput.addEventListener("blur", () => {
+  const value = lastNameInput.value.trim();
+  if (!value) {
+    showFieldError(lastNameInput, "Last name is required");
+  } else if (!validateName(value)) {
+    showFieldError(lastNameInput, "Last name must be at least 2 characters");
+  } else {
+    showFieldSuccess(lastNameInput);
   }
 });
+
+[firstNameInput, middleNameInput, lastNameInput].forEach((input) => input.addEventListener("input", () => {
+  if (input.classList.contains("error")) clearFieldError(input);
+}));
 
 emailInput.addEventListener("blur", () => {
   const value = emailInput.value.trim();
@@ -207,7 +218,10 @@ function createUser(payload) {
   const users = getStoredUsers();
   const nextUser = {
     id: payload.id || `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    fullName: payload.fullName,
+    firstName: payload.firstName,
+    middleName: payload.middleName || "",
+    lastName: payload.lastName,
+    fullName: [payload.firstName, payload.middleName, payload.lastName].filter(Boolean).join(" "),
     email: payload.email,
     username: payload.username || payload.email,
     password: payload.password,
@@ -232,7 +246,10 @@ function createUser(payload) {
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const fullName = fullNameInput.value.trim();
+  const firstName = firstNameInput.value.trim();
+  const middleName = middleNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
   const email = emailInput.value.trim();
   const username = usernameInput.value.trim();
   const phone = phoneInput.value.trim();
@@ -245,15 +262,19 @@ registerForm.addEventListener("submit", async (e) => {
   const confirmPassword = confirmPasswordInput.value;
   const role = roleInput.value || "cashier";
 
-  // Validate full name
-  if (!fullName) {
-    showFieldError(fullNameInput, "Full name is required");
-    fullNameInput.focus();
+  if (!firstName) {
+    showFieldError(firstNameInput, "First name is required");
+    firstNameInput.focus();
     return;
   }
-  if (!validateFullName(fullName)) {
-    showFieldError(fullNameInput, "Full name must be at least 2 characters");
-    fullNameInput.focus();
+  if (!validateName(firstName)) {
+    showFieldError(firstNameInput, "First name must be at least 2 characters");
+    firstNameInput.focus();
+    return;
+  }
+  if (!lastName || !validateName(lastName)) {
+    showFieldError(lastNameInput, lastName ? "Last name must be at least 2 characters" : "Last name is required");
+    lastNameInput.focus();
     return;
   }
 
@@ -315,7 +336,7 @@ registerForm.addEventListener("submit", async (e) => {
       return;
     }
 
-    const registrationPayload = { fullName, email, username, password, role, phone, branchId, branchLocation, dateHired, employmentStatus, pin };
+    const registrationPayload = { firstName, middleName, lastName, fullName, email, username, password, role, phone, branchId, branchLocation, dateHired, employmentStatus, pin };
     let creator = {};
     try { creator = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {}; } catch (error) { creator = {}; }
     let registeredOffline = false;
@@ -410,12 +431,15 @@ document.addEventListener("keydown", (e) => {
 // ============================================
 // FOCUS MANAGEMENT
 // ============================================
-fullNameInput.addEventListener("keydown", (e) => {
+firstNameInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
-    emailInput.focus();
+    middleNameInput.focus();
   }
 });
+
+middleNameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); lastNameInput.focus(); } });
+lastNameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); emailInput.focus(); } });
 
 emailInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
@@ -443,8 +467,8 @@ confirmPasswordInput.addEventListener("keydown", (e) => {
 window.addEventListener("load", () => {
   themeUtils.initTheme();
   document.getElementById('themeToggle')?.addEventListener('click', themeUtils.toggleTheme);
-  // Auto-focus full name field
+  // Auto-focus first name field
   dateHiredInput.max = new Date().toISOString().slice(0, 10);
   if (!dateHiredInput.value) dateHiredInput.value = new Date().toISOString().slice(0, 10);
-  fullNameInput.focus();
+  firstNameInput.focus();
 });

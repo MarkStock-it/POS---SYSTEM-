@@ -7,7 +7,10 @@ require_once __DIR__ . '/../api-auth.php';
 $creator = requireUser($mysqli, ['admin', 'super_admin']);
 
 $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$fullName = trim((string) ($data['fullName'] ?? ''));
+$firstName = trim((string) ($data['firstName'] ?? ''));
+$middleName = trim((string) ($data['middleName'] ?? ''));
+$lastName = trim((string) ($data['lastName'] ?? ''));
+$fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName], static function ($part) { return $part !== ''; })));
 $email = strtolower(trim((string) ($data['email'] ?? '')));
 $username = strtolower(trim((string) ($data['username'] ?? explode('@', $email)[0])));
 $password = (string) ($data['password'] ?? '');
@@ -18,9 +21,14 @@ $dateHired = trim((string) ($data['dateHired'] ?? ''));
 $employmentStatus = strtolower(trim((string) ($data['employmentStatus'] ?? 'active')));
 $pin = (string) ($data['pin'] ?? '');
 
-if ($fullName === '' || $email === '' || $username === '' || $password === '' || $phone === '' || $branchId <= 0 || $dateHired === '') {
+if ($firstName === '' || $lastName === '' || $email === '' || $username === '' || $password === '' || $phone === '' || $branchId <= 0 || $dateHired === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'Full name, email, username, phone, branch, hire date, and password are required.']);
+    echo json_encode(['error' => 'First name, last name, email, username, phone, branch, hire date, and password are required.']);
+    exit;
+}
+if (mb_strlen($firstName) < 2 || mb_strlen($firstName) > 100 || mb_strlen($lastName) < 2 || mb_strlen($lastName) > 100 || mb_strlen($middleName) > 100) {
+    http_response_code(422);
+    echo json_encode(['error' => 'First and last names must contain 2 to 100 characters. Middle name may contain up to 100 characters.']);
     exit;
 }
 $branchStmt = $mysqli->prepare('SELECT `branch_id`, `branch_name` FROM `branch` WHERE `branch_id` = ? AND `status` = "active" LIMIT 1');
@@ -63,8 +71,8 @@ if (!$roleRow) {
 $hash = password_hash($password, PASSWORD_DEFAULT);
 $pinHash = $pin === '' ? null : password_hash($pin, PASSWORD_DEFAULT);
 $accountStatus = $employmentStatus === 'inactive' ? 'inactive' : 'active';
-$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`, `phone`, `branch_location`, `branch_id`, `date_hired`, `employment_status`, `pin_hash`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-$stmt->bind_param('ssisssssisss', $fullName, $hash, $roleRow['role_id'], $accountStatus, $email, $username, $phone, $branchLocation, $branchId, $dateHired, $employmentStatus, $pinHash);
+$stmt = $mysqli->prepare('INSERT INTO `user` (`first_name`, `middle_name`, `last_name`, `password_hash`, `role_id`, `status`, `email`, `username`, `phone`, `branch_location`, `branch_id`, `date_hired`, `employment_status`, `pin_hash`) VALUES (?, NULLIF(?, \'\'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+$stmt->bind_param('ssssisssssisss', $firstName, $middleName, $lastName, $hash, $roleRow['role_id'], $accountStatus, $email, $username, $phone, $branchLocation, $branchId, $dateHired, $employmentStatus, $pinHash);
 
 try {
     $stmt->execute();
@@ -86,6 +94,9 @@ $responseRole = $roleType === 'super_admin' ? 'super-admin' : $roleType;
 echo json_encode([
     'id' => (int) $mysqli->insert_id,
     'fullName' => $fullName,
+    'firstName' => $firstName,
+    'middleName' => $middleName,
+    'lastName' => $lastName,
     'email' => $email,
     'username' => $username,
     'role' => $responseRole,
