@@ -40,6 +40,21 @@ function renderPageControls(targetId, pageKey, pageData, rerender, canChangePage
     controls.setAttribute('aria-label', `${targetId} pagination`); (target.closest('table') || target).insertAdjacentElement('afterend', controls);
   }
   controls.replaceChildren();
+  const setExpanded = (expanded) => {
+    controls.dataset.expanded = expanded ? 'true' : 'false';
+    controls.classList.toggle('expanded', expanded);
+    renderPageControls(targetId, pageKey, pageData, rerender, canChangePage);
+  };
+  if (controls.dataset.expanded !== 'true') {
+    controls.classList.remove('expanded');
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'app-pagination-toggle';
+    toggle.setAttribute('aria-label', 'Show pagination controls'); toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML = '<span></span><span></span><span></span>'; toggle.addEventListener('click', () => setExpanded(true));
+    controls.appendChild(toggle); return;
+  }
+  const backButton = document.createElement('button'); backButton.type = 'button'; backButton.className = 'app-page-back';
+  backButton.textContent = '← Back'; backButton.setAttribute('aria-label', 'Collapse pagination controls');
+  backButton.addEventListener('click', () => setExpanded(false)); controls.appendChild(backButton);
   const changePage = (destination) => {
     if (canChangePage && !canChangePage()) return false;
     state.pagination[pageKey] = destination;

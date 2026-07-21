@@ -501,6 +501,14 @@ html[data-theme="dark"] .remove-button {
 .payment-grid { display:grid; gap:12px; }
 .checkout-cash-notice { margin: 0; color: var(--muted); font-size: .86rem; font-weight: 650; text-align: center; }
 .app-pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 12px; }
+.app-pagination.expanded { animation: pagination-expand .22s ease-out both; }
+.app-pagination-toggle { width: 46px; height: 40px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid rgba(148,163,184,.28); border-radius: 11px; color: var(--text); background: var(--card-strong, #fff); cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.app-pagination-toggle span { width: 18px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .2s ease; }
+.app-pagination-toggle:hover { transform: scale(1.06); border-color: var(--primary); box-shadow: 0 5px 15px rgba(37,99,235,.14); }
+.app-pagination-toggle:hover span:first-child { transform: translateX(2px); }
+.app-pagination-toggle:hover span:last-child { transform: translateX(-2px); }
+.app-page-back { min-height: 36px; padding: 7px 11px; border: 1px solid rgba(148,163,184,.28); border-radius: 10px; color: var(--primary); background: var(--card-strong, #fff); font-weight: 750; cursor: pointer; }
+@keyframes pagination-expand { from { opacity: 0; transform: scaleX(.72); } to { opacity: 1; transform: scaleX(1); } }
 .app-page-button { min-width: 36px; min-height: 36px; padding: 7px 10px; border: 1px solid rgba(148,163,184,.28); border-radius: 10px; color: var(--text); background: var(--card-strong, #fff); cursor: pointer; }
 .app-page-button.active { border-color: var(--primary); color: #fff; background: var(--primary); }
 .app-page-button:disabled { opacity: .45; cursor: not-allowed; }

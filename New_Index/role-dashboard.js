@@ -275,6 +275,21 @@
   function populatePagination(pagination, pageData, onPageChange) {
     pagination.replaceChildren();
     if (!pageData) return;
+    const setExpanded = (expanded) => {
+      pagination.dataset.expanded = expanded ? 'true' : 'false';
+      pagination.classList.toggle('expanded', expanded);
+      populatePagination(pagination, pageData, onPageChange);
+    };
+    if (pagination.dataset.expanded !== 'true') {
+      pagination.classList.remove('expanded');
+      const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'app-pagination-toggle';
+      toggle.setAttribute('aria-label', 'Show pagination controls'); toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML = '<span></span><span></span><span></span>'; toggle.addEventListener('click', () => setExpanded(true));
+      pagination.appendChild(toggle); return;
+    }
+    const backButton = document.createElement('button'); backButton.type = 'button'; backButton.className = 'app-page-back';
+    backButton.textContent = '← Back'; backButton.setAttribute('aria-label', 'Collapse pagination controls');
+    backButton.addEventListener('click', () => setExpanded(false)); pagination.appendChild(backButton);
     const addButton = (label, destination, disabled, active = false) => {
       const button = document.createElement('button');
       button.type = 'button';
