@@ -126,7 +126,13 @@
     return { currentUser, role };
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await fetchJson('../PHP-TEST/auth/logout.php', { method: 'POST', body: '{}' });
+    } catch (error) {
+      showDashboardToast(error.message || 'Unable to end the current session.', 'error');
+      return;
+    }
     localStorage.removeItem('posCurrentUser');
     window.location.href = '../login-page/login.html';
   }
@@ -686,6 +692,58 @@
     showDashboardToast('Report generated from the latest POS data.', 'success');
   }
 
+  function formatShiftDuration(totalSeconds) {
+    const seconds = Math.max(0, Number(totalSeconds) || 0);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  }
+
+  async function loadReports(containerId = 'reportsList', paginationId = 'reportsPagination', page = 1) {
+    const container = document.getElementById(containerId);
+    const pagination = document.getElementById(paginationId);
+    if (!container) return;
+    container.innerHTML = '<div class="empty-state">Loading reports…</div>';
+    try {
+      const result = await fetchJson(`../PHP-TEST/reports.php?page=${encodeURIComponent(page)}&pageSize=5`);
+      const reports = Array.isArray(result.reports) ? result.reports : [];
+      if (!reports.length) {
+        container.innerHTML = '<div class="empty-state">No end-of-day reports are available yet.</div>';
+      } else {
+        container.replaceChildren(...reports.map((report) => {
+          const item = document.createElement('article');
+          item.className = 'report-item';
+          const amount = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(report.grossSales) || 0);
+          item.innerHTML = `<div><div class="report-name"></div><div class="report-meta"></div></div>`;
+          item.querySelector('.report-name').textContent = `EOD Summary · ${report.reportDate}`;
+          item.querySelector('.report-meta').textContent = `${report.transactionCount} sales · ${amount} · ${report.shiftCount} shifts (${formatShiftDuration(report.totalShiftSeconds)})`;
+          return item;
+        }));
+      }
+
+      if (!pagination) return;
+      const totalPages = Math.max(1, Number(result.totalPages) || 1);
+      pagination.replaceChildren();
+      if (totalPages <= 1) return;
+      const addButton = (label, targetPage, disabled, active = false) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `report-page-button${active ? ' active' : ''}`;
+        button.textContent = label;
+        button.disabled = disabled;
+        button.addEventListener('click', () => loadReports(containerId, paginationId, targetPage));
+        pagination.appendChild(button);
+      };
+      addButton('Prev', page - 1, page <= 1);
+      for (let index = 1; index <= totalPages; index += 1) addButton(String(index), index, false, index === page);
+      addButton('Next', page + 1, page >= totalPages);
+    } catch (error) {
+      container.innerHTML = '<div class="empty-state">Unable to load reports.</div>';
+      if (pagination) pagination.replaceChildren();
+      showDashboardToast(error.message || 'Unable to load reports.', 'error');
+    }
+  }
+
   function openNotifications() {
     showDashboardToast('You have no new notifications.', 'info');
   }
@@ -1049,6 +1107,7 @@
     createAccount,
     viewTransaction,
     generateReport,
+    loadReports,
     openNotifications,
     openProfileMenu,
     refreshDashboard,

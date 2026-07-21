@@ -6,7 +6,7 @@ const fullNameInput = document.getElementById("fullName");
 const emailInput = document.getElementById("email");
 const usernameInput = document.getElementById("username");
 const phoneInput = document.getElementById("phone");
-const branchLocationInput = document.getElementById("branchLocation");
+const branchInput = document.getElementById("branchId");
 const dateHiredInput = document.getElementById("dateHired");
 const employmentStatusInput = document.getElementById("employmentStatus");
 const pinInput = document.getElementById("pin");
@@ -236,7 +236,8 @@ registerForm.addEventListener("submit", async (e) => {
   const email = emailInput.value.trim();
   const username = usernameInput.value.trim();
   const phone = phoneInput.value.trim();
-  const branchLocation = branchLocationInput.value.trim();
+  const branchId = Number(branchInput.value);
+  const branchLocation = branchInput.options[branchInput.selectedIndex]?.textContent || "";
   const dateHired = dateHiredInput.value;
   const employmentStatus = employmentStatusInput.value;
   const pin = pinInput.value;
@@ -270,7 +271,7 @@ registerForm.addEventListener("submit", async (e) => {
 
   if (!validateUsername(username)) { showFieldError(usernameInput, "Use at least 3 letters, numbers, dots, dashes, or underscores"); usernameInput.focus(); return; }
   if (!validatePhone(phone)) { showFieldError(phoneInput, "Enter a valid phone number"); phoneInput.focus(); return; }
-  if (!branchLocation) { showFieldError(branchLocationInput, "Branch or store is required"); branchLocationInput.focus(); return; }
+  if (!Number.isInteger(branchId) || branchId <= 0) { showFieldError(branchInput, "Select an active branch"); branchInput.focus(); return; }
   if (!dateHired) { showFieldError(dateHiredInput, "Date hired is required"); dateHiredInput.focus(); return; }
   if (!validatePin(pin)) { showFieldError(pinInput, "PIN must contain 4 to 6 digits"); pinInput.focus(); return; }
 
@@ -314,7 +315,7 @@ registerForm.addEventListener("submit", async (e) => {
       return;
     }
 
-    const registrationPayload = { fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin };
+    const registrationPayload = { fullName, email, username, password, role, phone, branchId, branchLocation, dateHired, employmentStatus, pin };
     let creator = {};
     try { creator = JSON.parse(localStorage.getItem('posCurrentUser') || '{}') || {}; } catch (error) { creator = {}; }
     let registeredOffline = false;
@@ -355,10 +356,32 @@ loginButton.addEventListener("click", () => {
   window.location.href = "../login-page/login.html";
 });
 
-[usernameInput, phoneInput, branchLocationInput, dateHiredInput, pinInput].forEach((input) => {
+[usernameInput, phoneInput, branchInput, dateHiredInput, pinInput].forEach((input) => {
   input.addEventListener("input", () => clearFieldError(input));
   input.addEventListener("change", () => clearFieldError(input));
 });
+
+async function loadActiveBranches() {
+  branchInput.disabled = true;
+  branchInput.innerHTML = '<option value="">Loading active branches…</option>';
+  try {
+    const branches = await window.authApi?.fetchBranchesFromBackend?.(true);
+    if (!Array.isArray(branches) || !branches.length) throw new Error('No active branches are available.');
+    branchInput.innerHTML = '<option value="">Select a branch</option>';
+    branches.forEach((branch) => {
+      const option = document.createElement('option');
+      option.value = String(branch.id);
+      option.textContent = branch.name;
+      branchInput.appendChild(option);
+    });
+    branchInput.disabled = false;
+  } catch (error) {
+    branchInput.innerHTML = '<option value="">No active branches available</option>';
+    showToast(error.message || 'Unable to load branches.');
+  }
+}
+
+loadActiveBranches();
 
 function getDashboardUrl(role) {
   const normalized = String(role || '').toLowerCase().replace('_', '-');
@@ -423,10 +446,5 @@ window.addEventListener("load", () => {
   // Auto-focus full name field
   dateHiredInput.max = new Date().toISOString().slice(0, 10);
   if (!dateHiredInput.value) dateHiredInput.value = new Date().toISOString().slice(0, 10);
-  try {
-    const settings = JSON.parse(localStorage.getItem('markstockSystemSettings') || '{}') || {};
-    if (!branchLocationInput.value && settings.branchName) branchLocationInput.value = settings.branchName;
-  } catch (error) { /* Keep the field empty when local settings are invalid. */ }
   fullNameInput.focus();
 });
-

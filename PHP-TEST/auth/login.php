@@ -61,10 +61,25 @@ if (in_array($roleValue, ['super_admin', 'super-admin', 'superadmin', 'super adm
     $normalizedRole = 'cashier';
 }
 
+$loginTimestamp = null;
+if ($normalizedRole === 'cashier') {
+    $shiftStmt = $mysqli->prepare('INSERT INTO `cashier_shift` (`user_id`, `shift_date`, `time_in`) VALUES (?, CURRENT_DATE, CURRENT_TIMESTAMP)');
+    $shiftStmt->bind_param('i', $loginUserId);
+    $shiftStmt->execute();
+    $_SESSION['pos_shift_id'] = (int) $mysqli->insert_id;
+    $timestampStmt = $mysqli->prepare('SELECT `time_in` FROM `cashier_shift` WHERE `shift_id` = ?');
+    $timestampStmt->bind_param('i', $_SESSION['pos_shift_id']);
+    $timestampStmt->execute();
+    $loginTimestamp = $timestampStmt->get_result()->fetch_assoc()['time_in'] ?? null;
+}
+$loginTimestamp = $loginTimestamp ?: date('Y-m-d H:i:s');
+
 echo json_encode([
     'id' => (int) $user['id'],
     'fullName' => $user['full_name'],
     'email' => $user['email'],
     'username' => $user['username'],
     'role' => $normalizedRole,
+    'loginTimestamp' => $loginTimestamp,
+    'shiftId' => (int) ($_SESSION['pos_shift_id'] ?? 0),
 ]);

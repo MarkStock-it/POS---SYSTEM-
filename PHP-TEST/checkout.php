@@ -14,12 +14,15 @@ function checkoutError($status, $message) {
 $user = requireUser($mysqli, ['cashier', 'manager', 'admin', 'super_admin']);
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $items = $data['items'] ?? [];
-$paymentMethod = trim((string) ($data['paymentMethod'] ?? 'Unknown'));
-$discountPercent = (float) ($data['discountPercent'] ?? 0);
+$paymentMethod = trim((string) ($data['paymentMethod'] ?? 'Cash'));
 
 if (!is_array($items) || count($items) === 0) {
     checkoutError(400, 'Cart is empty');
 }
+if (strcasecmp($paymentMethod, 'Cash') !== 0) {
+    checkoutError(422, 'Cash is the only accepted payment method.');
+}
+$paymentMethod = 'Cash';
 
 try {
     $mysqli->begin_transaction();
@@ -53,9 +56,9 @@ try {
         $lockedItems[] = ['stockId' => (int) $stockRow['stock_id'], 'quantity' => $quantity, 'unitPrice' => $unitPrice];
     }
     $subtotal = round($subtotal, 2);
-    $discount = max(0, min($discountPercent, 100)) * $subtotal / 100;
-    $tax = round(($subtotal - $discount) * ($taxRate / 100), 2);
-    $total = round($subtotal - $discount + $tax, 2);
+    $discount = 0.0;
+    $tax = round($subtotal * ($taxRate / 100), 2);
+    $total = round($subtotal + $tax, 2);
     $amountTendered = $total;
     $changeAmount = 0.0;
 

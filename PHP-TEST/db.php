@@ -66,6 +66,18 @@ function ensureSchema($mysqli) {
         );
 
         $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `branch` (
+                `branch_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `branch_name` VARCHAR(150) NOT NULL UNIQUE,
+                `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+                `created_by` INT DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB"
+        );
+        $mysqli->query("INSERT IGNORE INTO `branch` (`branch_name`, `status`) VALUES ('Main Branch', 'active')");
+
+        $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `category` (
                 `category_id` INT AUTO_INCREMENT PRIMARY KEY,
                 `name` VARCHAR(150) NOT NULL,
@@ -192,8 +204,42 @@ function ensureSchema($mysqli) {
                 `shift_date` DATE DEFAULT NULL,
                 `time_in` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 `time_out` TIMESTAMP DEFAULT NULL,
+                `shift_duration_seconds` INT UNSIGNED DEFAULT NULL,
                 CONSTRAINT `fk_shift_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`)
             ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `shift_report` (
+                `report_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `shift_id` INT NOT NULL UNIQUE,
+                `user_id` INT NOT NULL,
+                `login_timestamp` DATETIME NOT NULL,
+                `logout_timestamp` DATETIME NOT NULL,
+                `shift_duration_seconds` INT UNSIGNED NOT NULL DEFAULT 0,
+                `total_sales` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_shift_report_shift` FOREIGN KEY (`shift_id`) REFERENCES `cashier_shift`(`shift_id`),
+                CONSTRAINT `fk_shift_report_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`)
+            ) ENGINE=InnoDB"
+        );
+
+        $mysqli->query(
+            "CREATE TABLE IF NOT EXISTS `daily_report` (
+                `daily_report_id` INT AUTO_INCREMENT PRIMARY KEY,
+                `report_date` DATE NOT NULL UNIQUE,
+                `shift_count` INT UNSIGNED NOT NULL DEFAULT 0,
+                `cashier_count` INT UNSIGNED NOT NULL DEFAULT 0,
+                `total_shift_seconds` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+                `transaction_count` INT UNSIGNED NOT NULL DEFAULT 0,
+                `gross_sales` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `generated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB"
+        );
+        $mysqli->query(
+            "CREATE OR REPLACE VIEW `reports_view` AS
+             SELECT `daily_report_id` AS `report_id`, 'eod_summary' AS `report_type`, `report_date`, `shift_count`, `cashier_count`, `total_shift_seconds`, `transaction_count`, `gross_sales`, `generated_at`
+             FROM `daily_report`"
         );
 
         $mysqli->query(
@@ -239,10 +285,12 @@ function ensureSchema($mysqli) {
         $addColumn('user', 'username', 'VARCHAR(100) DEFAULT NULL UNIQUE AFTER `email`');
         $addColumn('user', 'phone', 'VARCHAR(30) DEFAULT NULL AFTER `username`');
         $addColumn('user', 'branch_location', 'VARCHAR(150) DEFAULT NULL AFTER `phone`');
+        $addColumn('user', 'branch_id', 'INT DEFAULT NULL AFTER `branch_location`');
         $addColumn('user', 'date_hired', 'DATE DEFAULT NULL AFTER `branch_location`');
         $addColumn('user', 'employment_status', "VARCHAR(30) NOT NULL DEFAULT 'active' AFTER `date_hired`");
         $addColumn('user', 'pin_hash', 'VARCHAR(255) DEFAULT NULL AFTER `employment_status`');
         $addColumn('user', 'last_login_at', 'TIMESTAMP NULL DEFAULT NULL AFTER `pin_hash`');
+        $addColumn('cashier_shift', 'shift_duration_seconds', 'INT UNSIGNED DEFAULT NULL AFTER `time_out`');
 
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `user_device` (

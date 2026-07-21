@@ -511,8 +511,13 @@
   .audit-action { min-width: 260px; color: var(--text-primary); font-weight: 600; }
   .audit-entity { color: var(--text-secondary); font-family: var(--font-display); font-size: 11px; }
   .audit-empty { padding: 35px !important; text-align: center; color: var(--text-secondary); }
+  .branch-form { display: grid; grid-template-columns: minmax(0,1fr) 150px auto; align-items: end; gap: 10px; }
+  .branch-form-actions { display: flex; gap: 8px; }
+  .branch-list { display: grid; gap: 8px; margin-top: 15px; }
+  .branch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid var(--border-hairline); border-radius: 10px; background: var(--bg-void); }
+  .branch-row-meta { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; }
   @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
-  @media (max-width: 620px) { .settings-fields { grid-template-columns: 1fr; } .settings-field.full { grid-column: auto; } .settings-actions { flex-wrap: wrap; } }
+  @media (max-width: 620px) { .settings-fields, .branch-form { grid-template-columns: 1fr; } .settings-field.full { grid-column: auto; } .settings-actions { flex-wrap: wrap; } }
 </style>
 <link rel="stylesheet" href="dashboard-theme.css?v=4">
 </head>
@@ -700,6 +705,17 @@
                 <label class="settings-field">Support phone<input name="supportPhone" type="tel" maxlength="30" placeholder="+63 900 000 0000"></label>
                 <label class="settings-field full">Receipt footer<textarea name="receiptFooter" rows="2" maxlength="180" placeholder="Thank you for shopping with us!"></textarea></label>
               </div>
+            </section>
+
+            <section class="settings-card" aria-labelledby="branchManagementTitle">
+              <div class="settings-card-head"><div class="settings-card-icon">⌖</div><div><div class="settings-card-title" id="branchManagementTitle">Branch management</div><div class="settings-card-copy">Create branches and control which locations can be assigned to new accounts.</div></div></div>
+              <form id="branchForm" class="branch-form">
+                <input name="id" type="hidden">
+                <label class="settings-field">Branch name<input name="name" maxlength="150" required></label>
+                <label class="settings-field">Status<select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+                <div class="branch-form-actions"><button class="btn btn-ghost" id="cancelBranchEdit" type="button" hidden>Cancel edit</button><button class="btn btn-gold" type="submit">Save branch</button></div>
+              </form>
+              <div class="branch-list" id="branchList"><div class="audit-empty">Loading branches…</div></div>
             </section>
 
             <section class="settings-card">
@@ -927,9 +943,58 @@
   function fnOpenNotifications() { window.roleDashboard?.openNotifications?.(); }
   function fnOpenProfileMenu() { window.roleDashboard?.openProfileMenu?.(); }
   function fnLogout() { window.roleDashboard?.logout?.(); }
+
+  let managedBranches = [];
+  async function loadBranches() {
+    const list = document.getElementById('branchList');
+    list.innerHTML = '<div class="audit-empty">Loading branches…</div>';
+    try {
+      const response = await window.roleDashboard.fetchJson('../PHP-TEST/branches.php?active=0');
+      managedBranches = Array.isArray(response) ? response : [];
+      if (!managedBranches.length) { list.innerHTML = '<div class="audit-empty">No branches have been created.</div>'; return; }
+      list.replaceChildren(...managedBranches.map((branch) => {
+        const row = document.createElement('div');
+        row.className = 'branch-row';
+        row.innerHTML = '<div><strong></strong><div class="branch-row-meta"></div></div><button class="btn btn-ghost" type="button">Edit</button>';
+        row.querySelector('strong').textContent = branch.name;
+        row.querySelector('.branch-row-meta').textContent = branch.status;
+        row.querySelector('button').addEventListener('click', () => editBranch(branch.id));
+        return row;
+      }));
+    } catch (error) {
+      list.innerHTML = '<div class="audit-empty">Unable to load branches.</div>';
+      window.roleDashboard?.showDashboardToast?.(error.message || 'Unable to load branches.', 'error');
+    }
+  }
+  function resetBranchForm() {
+    const form = document.getElementById('branchForm');
+    form.reset(); form.elements.id.value = '';
+    document.getElementById('cancelBranchEdit').hidden = true;
+  }
+  function editBranch(branchId) {
+    const branch = managedBranches.find((item) => Number(item.id) === Number(branchId));
+    if (!branch) return;
+    const form = document.getElementById('branchForm');
+    form.elements.id.value = String(branch.id); form.elements.name.value = branch.name; form.elements.status.value = branch.status;
+    document.getElementById('cancelBranchEdit').hidden = false;
+    form.elements.name.focus();
+  }
+  async function saveBranch(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const id = Number(form.elements.id.value) || 0;
+    try {
+      await window.roleDashboard.fetchJson('../PHP-TEST/branches.php', { method: id ? 'PUT' : 'POST', body: JSON.stringify({ id, name: form.elements.name.value.trim(), status: form.elements.status.value }) });
+      window.roleDashboard.showDashboardToast(`Branch ${id ? 'updated' : 'created'}.`, 'success');
+      resetBranchForm(); await loadBranches();
+    } catch (error) {
+      window.roleDashboard.showDashboardToast(error.message || 'Unable to save branch.', 'error');
+    }
+  }
 </script>
 
-<script src="role-dashboard.js?v=10"></script>
+<script src="role-dashboard.js?v=12"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
@@ -940,9 +1005,12 @@
     await window.roleDashboard.loadDashboardSummary?.();
     window.roleDashboard.loadUsers?.('accountsTableBody');
     window.roleDashboard.loadActivityFeed?.('activityFeed');
+    await loadBranches();
     fnRefreshTransactions();
     window.setInterval(() => window.roleDashboard.loadActivityFeed?.('activityFeed'), 30000);
     const settingsForm = document.getElementById('systemSettingsForm');
+    document.getElementById('branchForm').addEventListener('submit', saveBranch);
+    document.getElementById('cancelBranchEdit').addEventListener('click', resetBranchForm);
     settingsForm.addEventListener('input', () => setSettingsDirty(true));
     settingsForm.addEventListener('change', () => setSettingsDirty(true));
     document.getElementById('auditSearch').addEventListener('input', renderAuditLog);

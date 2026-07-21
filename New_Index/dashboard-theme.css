@@ -266,6 +266,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .report-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
 .report-name { color: var(--text); font-weight: 750; }
 .report-meta { color: var(--muted); }
+.report-pagination { display: flex; justify-content: center; gap: 7px; padding: 0 14px 16px; }
+.report-page-button { min-width: 34px; min-height: 34px; padding: 7px 10px; border: 1px solid var(--glass-border); border-radius: 9px; color: var(--text); background: var(--card-strong); cursor: pointer; }
+.report-page-button.active { border-color: var(--primary); color: #fff; background: var(--primary); }
+.report-page-button:disabled { opacity: .45; cursor: not-allowed; }
 
 .activity-item { padding: 14px 20px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--glass-border); color: var(--text); }
 .activity-item:last-child { border-bottom: 0; }

@@ -108,10 +108,6 @@
               <span id="subtotalAmount">$0.00</span>
             </div>
             <div class="summary-row">
-              <span>Discount</span>
-              <span id="discountAmount">$0.00</span>
-            </div>
-            <div class="summary-row">
               <span>Tax</span>
               <span id="taxAmount">$0.00</span>
             </div>
@@ -122,6 +118,7 @@
           </div>
 
           <div class="payment-grid">
+            <p class="checkout-cash-notice">Cash payment is required to proceed to checkout.</p>
             <button class="payment-button payment-primary" type="button" onclick="goToCheckout()">Proceed to checkout</button>
           </div>
 
@@ -337,7 +334,8 @@
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="../auth-api.js?v=4"></script>
     <script src="../theme-utils.js"></script>
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=8"></script>
 </body>
 </html>

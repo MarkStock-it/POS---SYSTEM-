@@ -276,7 +276,8 @@ loginForm.addEventListener("submit", async (e) => {
       branchLocation: user.branchLocation || "",
       dateHired: user.dateHired || "",
       employmentStatus: user.employmentStatus || "active",
-      loggedAt: new Date().toISOString(),
+      loginTimestamp: user.loginTimestamp || new Date().toISOString(),
+      shiftId: Number(user.shiftId) || null,
     });
 
     successModal.classList.add("show");
@@ -307,7 +308,7 @@ loginForm.addEventListener("submit", async (e) => {
 // ============================================
 forgotPasswordLink.addEventListener("click", (e) => {
   e.preventDefault();
-  showToast("Password reset feature coming soon!", "error");
+  showToast("Please contact your system administrator at admin@pos.com to reset your password.", "error");
 });
 
 // ============================================
@@ -345,5 +346,3 @@ window.addEventListener("load", () => {
   // Auto-focus email field
   emailInput.focus();
 });
-
-

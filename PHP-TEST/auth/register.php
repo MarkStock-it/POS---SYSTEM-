@@ -13,16 +13,22 @@ $username = strtolower(trim((string) ($data['username'] ?? explode('@', $email)[
 $password = (string) ($data['password'] ?? '');
 $role = strtolower(trim((string) ($data['role'] ?? 'cashier')));
 $phone = trim((string) ($data['phone'] ?? ''));
-$branchLocation = trim((string) ($data['branchLocation'] ?? ''));
+$branchId = (int) ($data['branchId'] ?? 0);
 $dateHired = trim((string) ($data['dateHired'] ?? ''));
 $employmentStatus = strtolower(trim((string) ($data['employmentStatus'] ?? 'active')));
 $pin = (string) ($data['pin'] ?? '');
 
-if ($fullName === '' || $email === '' || $username === '' || $password === '' || $phone === '' || $branchLocation === '' || $dateHired === '') {
+if ($fullName === '' || $email === '' || $username === '' || $password === '' || $phone === '' || $branchId <= 0 || $dateHired === '') {
     http_response_code(400);
     echo json_encode(['error' => 'Full name, email, username, phone, branch, hire date, and password are required.']);
     exit;
 }
+$branchStmt = $mysqli->prepare('SELECT `branch_id`, `branch_name` FROM `branch` WHERE `branch_id` = ? AND `status` = "active" LIMIT 1');
+$branchStmt->bind_param('i', $branchId);
+$branchStmt->execute();
+$branchRow = $branchStmt->get_result()->fetch_assoc();
+if (!$branchRow) apiJson(422, ['error' => 'Select an existing active branch.']);
+$branchLocation = $branchRow['branch_name'];
 if (!preg_match('/^[a-zA-Z0-9_.-]{3,100}$/', $username)) {
     http_response_code(422); echo json_encode(['error' => 'Username format is invalid.']); exit;
 }
@@ -57,8 +63,8 @@ if (!$roleRow) {
 $hash = password_hash($password, PASSWORD_DEFAULT);
 $pinHash = $pin === '' ? null : password_hash($pin, PASSWORD_DEFAULT);
 $accountStatus = $employmentStatus === 'inactive' ? 'inactive' : 'active';
-$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`, `phone`, `branch_location`, `date_hired`, `employment_status`, `pin_hash`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-$stmt->bind_param('ssissssssss', $fullName, $hash, $roleRow['role_id'], $accountStatus, $email, $username, $phone, $branchLocation, $dateHired, $employmentStatus, $pinHash);
+$stmt = $mysqli->prepare('INSERT INTO `user` (`full_name`, `password_hash`, `role_id`, `status`, `email`, `username`, `phone`, `branch_location`, `branch_id`, `date_hired`, `employment_status`, `pin_hash`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+$stmt->bind_param('ssisssssisss', $fullName, $hash, $roleRow['role_id'], $accountStatus, $email, $username, $phone, $branchLocation, $branchId, $dateHired, $employmentStatus, $pinHash);
 
 try {
     $stmt->execute();
@@ -85,6 +91,7 @@ echo json_encode([
     'role' => $responseRole,
     'phone' => $phone,
     'branchLocation' => $branchLocation,
+    'branchId' => $branchId,
     'dateHired' => $dateHired,
     'employmentStatus' => $employmentStatus,
 ]);

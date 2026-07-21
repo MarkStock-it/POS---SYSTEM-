@@ -499,6 +499,7 @@ html[data-theme="dark"] .remove-button {
 
 /* payments */
 .payment-grid { display:grid; gap:12px; }
+.checkout-cash-notice { margin: 0; color: var(--muted); font-size: .86rem; font-weight: 650; text-align: center; }
 .secondary-actions { display:grid; gap:12px; }
 
 /* inventory layout */

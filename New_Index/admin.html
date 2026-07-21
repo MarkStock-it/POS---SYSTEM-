@@ -473,7 +473,7 @@
     border-radius: 3px;
   }
 </style>
-<link rel="stylesheet" href="dashboard-theme.css?v=4">
+<link rel="stylesheet" href="dashboard-theme.css?v=5">
 </head>
 <body>
 
@@ -595,31 +595,10 @@
       <section class="panel">
         <div class="panel-header">
           <div class="panel-title">Reports</div>
-          <span class="placeholder-fn">fnGenerateReport()</span>
+          <span>End-of-day summaries</span>
         </div>
-        <div id="reportsList">
-          <div class="report-item">
-            <div>
-              <div class="report-name">Daily Sales Summary</div>
-              <div class="report-meta">Generated automatically · 11:59 PM</div>
-            </div>
-            <button class="icon-btn" onclick="fnViewReport('daily-sales')">↗</button>
-          </div>
-          <div class="report-item">
-            <div>
-              <div class="report-name">Weekly Staff Performance</div>
-              <div class="report-meta">Updated · Mon 6:00 AM</div>
-            </div>
-            <button class="icon-btn" onclick="fnViewReport('staff-performance')">↗</button>
-          </div>
-          <div class="report-item">
-            <div>
-              <div class="report-name">Voided Transactions Log</div>
-              <div class="report-meta">Generated from live transaction data</div>
-            </div>
-            <button class="icon-btn" onclick="fnViewReport('voided-log')">↗</button>
-          </div>
-        </div>
+        <div class="report-list" id="reportsList"><div class="empty-state">Loading reports…</div></div>
+        <nav class="report-pagination" id="reportsPagination" aria-label="Reports pagination"></nav>
       </section>
     </div>
 
@@ -692,7 +671,7 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
-<script src="role-dashboard.js?v=10"></script>
+<script src="role-dashboard.js?v=12"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
@@ -703,6 +682,7 @@
     await window.roleDashboard.loadDashboardSummary?.();
     window.fnLoadTransactions?.();
     window.roleDashboard.loadUsers?.('staffTableBody');
+    window.roleDashboard.loadReports?.('reportsList', 'reportsPagination');
   });
 </script>
 </body>

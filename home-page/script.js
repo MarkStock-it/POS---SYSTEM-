@@ -13,7 +13,6 @@ const state = {
   productSearch: '',
   inventorySearch: '',
   editingProductId: null,
-  discountPercent: 0,
   customCategories: [],
   pendingImageDataUrl: '',
   pendingImageFile: null,
@@ -164,7 +163,6 @@ async function scanBarcode(barcode) {
 function saveCartState() {
   try {
     sessionStorage.setItem('posCart', JSON.stringify(state.cart));
-    sessionStorage.setItem('posDiscountPercent', String(state.discountPercent || 0));
   } catch (error) {
     console.warn('Unable to save cart state:', error);
   }
@@ -173,12 +171,8 @@ function saveCartState() {
 function loadCartState() {
   try {
     const savedCart = sessionStorage.getItem('posCart');
-    const savedDiscount = sessionStorage.getItem('posDiscountPercent');
     if (savedCart) {
       state.cart = JSON.parse(savedCart) || [];
-    }
-    if (savedDiscount) {
-      state.discountPercent = Number(savedDiscount) || 0;
     }
   } catch (error) {
     console.warn('Unable to restore cart state from session storage', error);
@@ -431,13 +425,8 @@ function renderCart() {
   cartCount.textContent = `${state.cart.reduce((sum, item) => sum + item.quantity, 0)} items`;
   cartNote.textContent = state.cart.length ? 'Review the cart before payment.' : 'Add items from the left panel to build an order.';
   document.getElementById('subtotalAmount').textContent = formatCurrency(summary.subtotal);
-  document.getElementById('discountAmount').textContent = formatCurrency(summary.discount);
   document.getElementById('taxAmount').textContent = formatCurrency(summary.tax);
   document.getElementById('totalAmount').textContent = formatCurrency(summary.total);
-
-  // Keep discount input in sync if present
-  const discountInput = document.getElementById('discountInput');
-  if (discountInput) discountInput.value = String(state.discountPercent || 0);
 
   saveCartState();
 
@@ -523,11 +512,10 @@ function renderCart() {
 
 function calculateTotals() {
   const subtotal = state.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discount = (Number(state.discountPercent || 0) / 100) * subtotal;
   const taxRate = Math.max(0, Math.min(100, Number(getPosSettings().taxRate ?? 8)));
-  const tax = Number(((subtotal - discount) * (taxRate / 100)).toFixed(2));
-  const total = Number((subtotal - discount + tax).toFixed(2));
-  return { subtotal, discount, tax, total };
+  const tax = Number((subtotal * (taxRate / 100)).toFixed(2));
+  const total = Number((subtotal + tax).toFixed(2));
+  return { subtotal, tax, total };
 }
 
 function addToCart(productId, productOverride = null) {
@@ -582,7 +570,6 @@ function goToCheckout() {
 
   const checkoutData = {
     cart: state.cart,
-    discountPercent: state.discountPercent || 0,
     totals: calculateTotals(),
     createdAt: new Date().toISOString(),
   };
@@ -591,10 +578,18 @@ function goToCheckout() {
   window.location.href = 'checkout.html';
 }
 
-function logoutFromHome() {
+async function logoutFromHome() {
   // Stop the scanner first so its close handler cannot leave a reconnect timer
   // running while the browser is navigating away.
   disconnectPhoneScanner();
+
+  try {
+    await window.authApi?.logoutFromBackend?.();
+  } catch (error) {
+    console.error('Unable to finalize shift summary:', error);
+    showToast(error.message || 'Unable to finalize the shift summary.', 'danger');
+    return;
+  }
 
   try {
     localStorage.removeItem('posCurrentUser');
@@ -1188,7 +1183,6 @@ function processPayment(paymentMethod) {
 
   const payload = {
     paymentMethod,
-    discountPercent: Number(state.discountPercent || 0),
     taxRate: Number(getPosSettings().taxRate ?? 8),
     items: state.cart.map((item) => ({
       productId: item.productId,
@@ -1222,13 +1216,6 @@ function processCashPayment() {
   processPayment('Cash');
 }
 
-function processCardPayment() {
-  processPayment('Card');
-}
-
-function processDigitalWalletPayment() {
-  processPayment('Digital Wallet');
-}
 
 function loadProducts() {
   return fetchProducts();
@@ -1253,17 +1240,6 @@ window.addEventListener('DOMContentLoaded', () => {
       window.history.replaceState({}, '', window.location.pathname);
       showToast('Inventory Management is available only to managers and super admins.', 'danger');
     }
-  }
-  // Discount input binding (if present)
-  const discountInput = document.getElementById('discountInput');
-  if (discountInput) {
-    discountInput.addEventListener('input', (e) => {
-      let v = Number(e.target.value);
-      if (Number.isNaN(v)) v = 0;
-      v = Math.max(0, Math.min(100, v));
-      state.discountPercent = v;
-      renderCart();
-    });
   }
   renderScannerInfo();
   loadCartState();

@@ -41,15 +41,19 @@ function joinApiUrl(baseUrl, endpoint) {
 }
 
 function mapEndpointToApiPath(url) {
+  const [path, query = ''] = String(url || '').split('?');
   const routes = {
     '/api/auth/login': 'PHP-TEST/auth/login.php',
+    '/api/auth/logout': 'PHP-TEST/auth/logout.php',
     '/api/auth/register': 'PHP-TEST/auth/register.php',
     '/api/auth/register/v2': 'PHP-TEST/auth/register.php',
     '/api/auth/users': 'PHP-TEST/auth/users.php',
     '/api/auth/profile': 'PHP-TEST/auth/profile.php',
+    '/api/branches': 'PHP-TEST/branches.php',
     '/api/settings': 'PHP-TEST/settings.php',
   };
-  return routes[url] || url;
+  const mapped = routes[path] || path;
+  return query ? `${mapped}?${query}` : mapped;
 }
 
 async function makeApiRequest(endpoint, options = {}) {
@@ -79,10 +83,10 @@ async function loginWithBackend(identifier, password) {
   });
 }
 
-async function registerWithBackend({ fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin }) {
+async function registerWithBackend({ fullName, email, username, password, role, phone, branchId, dateHired, employmentStatus, pin }) {
   return makeApiRequest('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ fullName, email, username, password, role, phone, branchLocation, dateHired, employmentStatus, pin }),
+    body: JSON.stringify({ fullName, email, username, password, role, phone, branchId, dateHired, employmentStatus, pin }),
   });
 }
 
@@ -90,8 +94,18 @@ async function fetchUsersFromBackend() {
   return makeApiRequest('/api/auth/users');
 }
 
+async function logoutFromBackend() {
+  return makeApiRequest('/api/auth/logout', { method: 'POST', body: '{}' });
+}
+
+async function fetchBranchesFromBackend(activeOnly = true) {
+  return makeApiRequest(`/api/branches?active=${activeOnly ? '1' : '0'}`);
+}
+
 window.authApi = {
   loginWithBackend,
   registerWithBackend,
   fetchUsersFromBackend,
+  logoutFromBackend,
+  fetchBranchesFromBackend,
 };

@@ -1,9 +1,7 @@
 const checkoutState = {
   cart: [],
-  discountPercent: 0,
   totals: {
     subtotal: 0,
-    discount: 0,
     tax: 0,
     total: 0,
   },
@@ -145,7 +143,6 @@ function renderCheckoutItems() {
 
 function renderTotals() {
   document.getElementById('summarySubtotal').textContent = formatCurrency(checkoutState.totals.subtotal);
-  document.getElementById('summaryDiscount').textContent = formatCurrency(checkoutState.totals.discount);
   document.getElementById('summaryTax').textContent = formatCurrency(checkoutState.totals.tax);
   document.getElementById('summaryTotal').textContent = formatCurrency(checkoutState.totals.total);
 }
@@ -161,7 +158,6 @@ function loadCheckoutData() {
   try {
     const payload = JSON.parse(raw);
     checkoutState.cart = Array.isArray(payload.cart) ? payload.cart : [];
-    checkoutState.discountPercent = Number(payload.discountPercent || 0);
     checkoutState.totals = payload.totals || calculateTotalsFromCart();
     renderCheckoutItems();
     renderTotals();
@@ -174,16 +170,14 @@ function loadCheckoutData() {
 
 function calculateTotalsFromCart() {
   const subtotal = checkoutState.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discount = (Number(checkoutState.discountPercent || 0) / 100) * subtotal;
   const taxRate = Math.max(0, Math.min(100, Number(getPosSettings().taxRate ?? 8)));
-  const tax = Number(((subtotal - discount) * (taxRate / 100)).toFixed(2));
-  const total = Number((subtotal - discount + tax).toFixed(2));
-  return { subtotal, discount, tax, total };
+  const tax = Number((subtotal * (taxRate / 100)).toFixed(2));
+  const total = Number((subtotal + tax).toFixed(2));
+  return { subtotal, tax, total };
 }
 
 function disableCheckoutActions() {
   document.getElementById('confirmButton')?.setAttribute('disabled', 'disabled');
-  document.getElementById('paymentMethodSelect')?.setAttribute('disabled', 'disabled');
 }
 
 function submitCheckout() {
@@ -193,8 +187,7 @@ function submitCheckout() {
   }
 
   const payload = {
-    paymentMethod: checkoutState.paymentMethod,
-    discountPercent: Number(checkoutState.discountPercent || 0),
+    paymentMethod: 'Cash',
     taxRate: Number(getPosSettings().taxRate ?? 8),
     items: checkoutState.cart.map((item) => ({
       productId: item.productId,
@@ -218,7 +211,6 @@ function submitCheckout() {
       showToast(`Checkout completed. Total ${formatCurrency(result.total)}`);
       sessionStorage.removeItem('posCheckoutData');
       sessionStorage.removeItem('posCart');
-      sessionStorage.removeItem('posDiscountPercent');
       document.getElementById('confirmButton')?.setAttribute('disabled', 'disabled');
       setTimeout(() => {
         window.location.href = 'index.html';
@@ -231,10 +223,6 @@ function submitCheckout() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('paymentMethodSelect')?.addEventListener('change', (event) => {
-    checkoutState.paymentMethod = event.target.value;
-  });
-
   document.getElementById('backButton')?.addEventListener('click', () => {
     window.location.href = 'index.html';
   });

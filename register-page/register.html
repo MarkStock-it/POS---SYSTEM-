@@ -65,8 +65,8 @@
             <span class="error-message" id="phoneError"></span>
           </div>
           <div class="form-group">
-            <label for="branchLocation"><span>Branch / Store</span></label>
-            <div class="input-wrapper"><input id="branchLocation" type="text" placeholder="Main Branch" maxlength="150" required aria-invalid="false" aria-describedby="branchLocationError" /></div>
+            <label for="branchId"><span>Branch / Store</span></label>
+            <div class="input-wrapper"><select id="branchId" required aria-invalid="false" aria-describedby="branchLocationError"><option value="">Loading active branches…</option></select></div>
             <span class="error-message" id="branchLocationError"></span>
           </div>
           <div class="form-group">
@@ -168,8 +168,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="../auth-api.js?v=3"></script>
+  <script src="../auth-api.js?v=4"></script>
   <script src="../theme-utils.js"></script>
-  <script src="register.js?v=2"></script>
+  <script src="register.js?v=3"></script>
 </body>
 </html>

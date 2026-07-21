@@ -29,7 +29,7 @@
       <div>
         <p class="eyebrow">Checkout Review</p>
         <h1>Confirm your order</h1>
-        <p class="subheading">Review the order summary, choose payment, and complete the sale.</p>
+        <p class="subheading">Review the order summary and complete the cash sale.</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" id="backButton">Back to POS</button>
@@ -67,10 +67,6 @@
               <span id="summarySubtotal">$0.00</span>
             </div>
             <div class="summary-row">
-              <span>Discount</span>
-              <span id="summaryDiscount">$0.00</span>
-            </div>
-            <div class="summary-row">
               <span>Tax</span>
               <span id="summaryTax">$0.00</span>
             </div>
@@ -80,14 +76,7 @@
             </div>
           </div>
 
-          <label class="field-group">
-            <span>Payment Method</span>
-            <select id="paymentMethodSelect">
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-              <option value="Digital Wallet">Digital Wallet</option>
-            </select>
-          </label>
+          <div class="cash-payment-only" role="note"><strong>Cash payment</strong><span>Cash payment is required to proceed to checkout.</span></div>
 
           <div class="checkout-actions">
             <button class="primary-button" type="button" id="confirmButton">Complete checkout</button>
@@ -101,6 +90,6 @@
   </div>
 
   <script src="../theme-utils.js"></script>
-  <script src="checkout.js?v=7"></script>
+  <script src="checkout.js?v=8"></script>
 </body>
 </html>
