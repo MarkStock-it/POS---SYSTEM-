@@ -327,7 +327,7 @@
     .page-header { flex-direction: column; align-items: flex-start; }
   }
 </style>
-<link rel="stylesheet" href="dashboard-theme.css?v=4">
+<link rel="stylesheet" href="dashboard-theme.css?v=6">
 </head>
 <body>
 
@@ -480,29 +480,8 @@
             <h2>Reports</h2>
           </div>
         </div>
-        <div class="report-list" id="reportsList">
-          <div class="report-item">
-            <div>
-              <div class="report-name">Daily Sales Summary</div>
-              <div class="report-meta">Generated automatically · 11:59 PM</div>
-            </div>
-            <button class="icon-btn" type="button" onclick="fnViewReport('daily-sales')">↗</button>
-          </div>
-          <div class="report-item">
-            <div>
-              <div class="report-name">Voided / Overridden Log</div>
-              <div class="report-meta">Reviewed at end of shift</div>
-            </div>
-            <button class="icon-btn" type="button" onclick="fnViewReport('voided-log')">↗</button>
-          </div>
-          <div class="report-item">
-            <div>
-              <div class="report-name">Low Stock Report</div>
-              <div class="report-meta">Items below reorder threshold</div>
-            </div>
-            <button class="icon-btn" type="button" onclick="fnViewReport('low-stock')">↗</button>
-          </div>
-        </div>
+        <div class="report-list" id="reportsList"><div class="empty-state">Loading reports…</div></div>
+        <nav class="report-pagination" id="reportsPagination" aria-label="Reports pagination"></nav>
       </section>
     </div>
 
@@ -526,7 +505,7 @@
 </script>
 
 <script src="../theme-utils.js"></script>
-<script src="role-dashboard.js?v=11"></script>
+<script src="role-dashboard.js?v=13"></script>
 <script>
   // Smooth-scroll sidebar navigation, with the nav item highlighting
   // itself to match whichever section is currently in view.
@@ -573,6 +552,7 @@
       roleId: 'currentRoleBadge',
     });
     await window.roleDashboard.loadDashboardSummary?.();
+    window.roleDashboard.loadReports?.('reportsList', 'reportsPagination');
     window.fnLoadTransactions?.();
     window.fnLoadInventory?.();
   });

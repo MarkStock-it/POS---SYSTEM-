@@ -106,7 +106,7 @@ $search = trim((string) ($_GET['search'] ?? ''));
 $category = strtolower(trim((string) ($_GET['category'] ?? 'all')));
 $stockFilter = strtolower(trim((string) ($_GET['stock'] ?? 'all')));
 
-$sql = 'SELECT p.product_id AS id, p.product_code AS sku, p.barcode, p.name, p.description, p.price, p.cost_price AS cost, COALESCE(s.quantity, 0) AS stock, p.image_path AS image, c.name AS category, p.restock_threshold AS threshold, p.status, p.delete_flag AS deleteFlag, sc.counted_quantity AS currentStock, sc.expected_quantity AS checkedExpectedStock, sc.checked_by_name AS stockCheckedBy, sc.checked_at AS stockCheckedAt FROM `product` AS p LEFT JOIN `category` AS c ON c.category_id = p.category_id LEFT JOIN (SELECT product_id, SUM(quantity) AS quantity FROM `stock` GROUP BY product_id) AS s ON s.product_id = p.product_id LEFT JOIN `stock_check` AS sc ON sc.stock_check_id = (SELECT sc_latest.stock_check_id FROM `stock_check` AS sc_latest WHERE sc_latest.product_id = p.product_id ORDER BY sc_latest.checked_at DESC, sc_latest.stock_check_id DESC LIMIT 1)';
+$sql = 'SELECT p.product_id AS id, p.product_code AS sku, p.barcode, p.name, p.description, p.price, p.cost_price AS cost, COALESCE(s.quantity, 0) AS stock, p.image_path AS image, c.name AS category, p.restock_threshold AS threshold, p.status, p.delete_flag AS deleteFlag, sc.counted_quantity AS currentStock, sc.expected_quantity AS checkedExpectedStock, sc.variance AS stockVariance, sc.checked_by_name AS stockCheckedBy, sc.checked_at AS stockCheckedAt FROM `product` AS p LEFT JOIN `category` AS c ON c.category_id = p.category_id LEFT JOIN (SELECT product_id, SUM(quantity) AS quantity FROM `stock` GROUP BY product_id) AS s ON s.product_id = p.product_id LEFT JOIN `stock_check` AS sc ON sc.stock_check_id = (SELECT sc_latest.stock_check_id FROM `stock_check` AS sc_latest WHERE sc_latest.product_id = p.product_id ORDER BY sc_latest.checked_at DESC, sc_latest.stock_check_id DESC LIMIT 1)';
 $where = ['p.delete_flag = 0'];
 $params = [];
 $types = '';
@@ -156,7 +156,7 @@ while ($row = $result->fetch_assoc()) {
         'price' => (float) $row['price'],
         'stock' => (int) $row['stock'],
         'currentStock' => $row['currentStock'] === null ? null : (int) $row['currentStock'],
-        'stockVariance' => $row['currentStock'] === null ? null : (int) $row['currentStock'] - (int) $row['checkedExpectedStock'],
+        'stockVariance' => $row['currentStock'] === null ? null : (int) $row['stockVariance'],
         'stockCheckedBy' => $row['stockCheckedBy'],
         'stockCheckedAt' => $row['stockCheckedAt'],
         'image' => $row['image'],

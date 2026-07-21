@@ -262,13 +262,52 @@
     return `${days} day${days === 1 ? '' : 's'} ago`;
   }
 
-  async function loadActivityFeed(targetId = 'activityFeed') {
+  const DEFAULT_PAGE_SIZE = 5;
+
+  function paginateRecords(records, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
+    const items = Array.isArray(records) ? records : [];
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const currentPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+    const start = (currentPage - 1) * pageSize;
+    return { items: items.slice(start, start + pageSize), page: currentPage, pageSize, total: items.length, totalPages };
+  }
+
+  function renderPagination(targetId, pageData, onPageChange) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    const anchor = target.closest('table') || target;
+    let pagination = document.getElementById(`${targetId}Pagination`);
+    if (!pagination) {
+      pagination = document.createElement('nav');
+      pagination.id = `${targetId}Pagination`;
+      pagination.className = 'app-pagination';
+      pagination.setAttribute('aria-label', `${targetId} pagination`);
+      anchor.insertAdjacentElement('afterend', pagination);
+    }
+    pagination.replaceChildren();
+    if (!pageData || pageData.totalPages <= 1) return;
+    const addButton = (label, destination, disabled, active = false) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `app-page-button${active ? ' active' : ''}`;
+      button.textContent = label;
+      button.disabled = disabled;
+      button.addEventListener('click', () => onPageChange(destination));
+      pagination.appendChild(button);
+    };
+    addButton('Prev', pageData.page - 1, pageData.page <= 1);
+    for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+    addButton('Next', pageData.page + 1, pageData.page >= pageData.totalPages);
+  }
+
+  async function loadActivityFeed(targetId = 'activityFeed', page = 1) {
     const feed = document.getElementById(targetId);
     if (!feed) return;
     try {
       const activities = getCurrentUser().isLocalAccount
-        ? getLocalAuditRecords().slice(0, 12)
-        : await fetchJson(phpApi('audit-log.php', '?limit=12'));
+        ? getLocalAuditRecords()
+        : await fetchJson(phpApi('audit-log.php', '?limit=5000'));
+      const pageData = paginateRecords(activities, page);
       feed.replaceChildren();
       if (!Array.isArray(activities) || !activities.length) {
         const empty = document.createElement('div');
@@ -277,7 +316,7 @@
         feed.appendChild(empty);
         return;
       }
-      activities.forEach((activity) => {
+      pageData.items.forEach((activity) => {
         const item = document.createElement('div');
         item.className = 'activity-item';
         const dot = document.createElement('div');
@@ -297,6 +336,7 @@
         item.append(dot, content);
         feed.appendChild(item);
       });
+      renderPagination(targetId, pageData, (nextPage) => loadActivityFeed(targetId, nextPage));
     } catch (error) {
       feed.textContent = 'Unable to load system activity.';
       console.error('Failed to load activity:', error);
@@ -322,7 +362,7 @@
     }
   }
 
-  async function loadTransactions(targetTableId) {
+  async function loadTransactions(targetTableId, page = 1) {
     try {
       const transactions = await fetchJson(phpApi('transactions.php'));
       const tableBody = document.getElementById(targetTableId);
@@ -332,7 +372,8 @@
         return;
       }
 
-      tableBody.innerHTML = transactions.map((txn) => {
+      const pageData = paginateRecords(transactions, page);
+      tableBody.innerHTML = pageData.items.map((txn) => {
         const statusText = txn.payment_method && String(txn.payment_method).toLowerCase() === 'flagged' ? 'Flagged' : 'Completed';
         const statusClass = statusText === 'Flagged' ? 'offline' : 'online';
         return `
@@ -346,6 +387,7 @@
           </tr>
         `;
       }).join('');
+      renderPagination(targetTableId, pageData, (nextPage) => loadTransactions(targetTableId, nextPage));
     } catch (error) {
       console.error('Failed to load transactions:', error);
       const tableBody = document.getElementById(targetTableId);
@@ -353,7 +395,7 @@
     }
   }
 
-  async function loadInventory(targetTableId) {
+  async function loadInventory(targetTableId, page = 1) {
     try {
       const products = await fetchJson(phpApi('products.php'));
       const tableBody = document.getElementById(targetTableId);
@@ -363,7 +405,8 @@
         return;
       }
 
-      tableBody.innerHTML = products.map((product) => {
+      const pageData = paginateRecords(products, page);
+      tableBody.innerHTML = pageData.items.map((product) => {
         const stock = Number(product.stock ?? 0);
         const percent = Math.max(8, Math.min(100, (stock / 200) * 100));
         const stateClass = stock <= 0 ? 'critical' : stock <= 10 ? 'low' : 'healthy';
@@ -378,12 +421,15 @@
           </tr>
         `;
       }).join('');
+      renderPagination(targetTableId, pageData, (nextPage) => loadInventory(targetTableId, nextPage));
     } catch (error) {
       console.error('Failed to load inventory:', error);
     }
   }
 
-  async function loadUsers(targetTableId) {
+  const userRoleFilters = {};
+
+  async function loadUsers(targetTableId, page = 1) {
     const tableBody = document.getElementById(targetTableId);
     if (!tableBody) return;
     tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading users...</td></tr>';
@@ -397,16 +443,20 @@
       }
 
       const currentRole = normalizeRole(getCurrentUser().role);
-      const visibleUsers = currentRole === 'admin'
+      let visibleUsers = currentRole === 'admin'
         ? users.filter((user) => ['manager', 'cashier'].includes(normalizeRole(user.role)))
         : users;
+      const roleFilter = userRoleFilters[targetTableId] || 'all';
+      if (roleFilter !== 'all') visibleUsers = visibleUsers.filter((user) => normalizeRole(user.role) === normalizeRole(roleFilter));
 
       if (!visibleUsers.length) {
         tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No manageable users found.</td></tr>';
+        renderPagination(targetTableId, paginateRecords([], 1), () => {});
         return;
       }
 
-      tableBody.innerHTML = visibleUsers.map((user) => {
+      const pageData = paginateRecords(visibleUsers, page);
+      tableBody.innerHTML = pageData.items.map((user) => {
         const roleLabel = getRoleLabel(user.role);
         const roleClass = getRoleClass(user.role);
         const statusLabel = getStatusLabel(user.status);
@@ -426,22 +476,15 @@
           </tr>
         `;
       }).join('');
+      renderPagination(targetTableId, pageData, (nextPage) => loadUsers(targetTableId, nextPage));
     } catch (error) {
       console.error('Failed to load users:', error);
     }
   }
 
   function filterRowsByRole(targetTableId, roleFilter) {
-    const tableBody = document.getElementById(targetTableId);
-    if (!tableBody) return;
-
-    const rows = Array.from(tableBody.querySelectorAll('tr'));
-    rows.forEach((row) => {
-      const roleCell = row.querySelector('.role-pill');
-      const roleText = roleCell ? roleCell.textContent.toLowerCase() : '';
-      const shouldShow = !roleFilter || roleFilter === 'all' || roleText.includes(roleFilter.toLowerCase());
-      row.style.display = shouldShow ? '' : 'none';
-    });
+    userRoleFilters[targetTableId] = roleFilter || 'all';
+    loadUsers(targetTableId, 1);
   }
 
   let rolePickerOutsideHandler = null;
@@ -744,6 +787,25 @@
     }
   }
 
+  async function loadShifts(targetTableId = 'shiftsTableBody', page = 1) {
+    const body = document.getElementById(targetTableId);
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">Loading shifts…</td></tr>';
+    try {
+      const result = await fetchJson(`../PHP-TEST/shifts.php?page=${encodeURIComponent(page)}&pageSize=${DEFAULT_PAGE_SIZE}`);
+      const records = Array.isArray(result.records) ? result.records : [];
+      if (!records.length) {
+        body.innerHTML = '<tr><td colspan="6" class="empty-state">No cashier shifts found.</td></tr>';
+      } else {
+        body.innerHTML = records.map((shift) => `<tr><td class="cell-primary">#${shift.id}</td><td>${shift.cashierName || `User #${shift.userId}`}</td><td>${formatTimestamp(shift.loginTimestamp)}</td><td>${shift.logoutTimestamp ? formatTimestamp(shift.logoutTimestamp) : 'Active'}</td><td>${shift.shiftDurationSeconds == null ? 'In progress' : formatShiftDuration(shift.shiftDurationSeconds)}</td><td class="txn-amount">${formatCurrency(shift.totalSales || 0)}</td></tr>`).join('');
+      }
+      renderPagination(targetTableId, { page: Number(result.page) || page, pageSize: DEFAULT_PAGE_SIZE, total: Number(result.total) || 0, totalPages: Number(result.totalPages) || 1 }, (nextPage) => loadShifts(targetTableId, nextPage));
+    } catch (error) {
+      body.innerHTML = '<tr><td colspan="6" class="empty-state">Unable to load cashier shifts.</td></tr>';
+      showDashboardToast(error.message || 'Unable to load cashier shifts.', 'error');
+    }
+  }
+
   function openNotifications() {
     showDashboardToast('You have no new notifications.', 'info');
   }
@@ -1012,13 +1074,17 @@
       form.querySelector('input').focus();
     }));
     const deviceList = security.querySelector('.profile-devices');
+    deviceList.id = 'profileDevicesList';
     if (!devices.length) {
       const empty = document.createElement('div');
       empty.className = 'profile-empty';
       empty.textContent = 'No paired devices linked to this account.';
       deviceList.appendChild(empty);
     } else {
-      devices.forEach((device) => {
+      const renderDevices = (page = 1) => {
+        deviceList.replaceChildren();
+        const pageData = paginateRecords(devices, page);
+        pageData.items.forEach((device) => {
         const item = document.createElement('div');
         item.className = 'profile-device';
         item.innerHTML = `<div><div class="profile-device-name"></div><div class="profile-device-meta"></div></div><button class="profile-btn profile-unlink" type="button">Unlink</button>`;
@@ -1029,7 +1095,9 @@
           unlinkButton.disabled = true;
           try {
             await fetchJson(phpApi('auth/profile.php'), { method: 'POST', body: JSON.stringify({ action: 'unlink-device', deviceId: device.id }) });
-            item.remove();
+            const deviceIndex = devices.findIndex((entry) => String(entry.id) === String(device.id));
+            if (deviceIndex >= 0) devices.splice(deviceIndex, 1);
+            renderDevices(pageData.page);
             showDashboardToast('Device unlinked.', 'success');
           } catch (error) {
             unlinkButton.disabled = false;
@@ -1038,6 +1106,9 @@
         });
         deviceList.appendChild(item);
       });
+        renderPagination('profileDevicesList', pageData, renderDevices);
+      };
+      renderDevices();
     }
 
     const activity = document.createElement('section');
@@ -1051,12 +1122,19 @@
       const permissionCard = document.createElement('section');
       permissionCard.className = 'profile-card wide';
       permissionCard.innerHTML = '<h3 class="profile-card-title">Assigned permissions</h3><div class="profile-permissions"></div>';
-      permissionCard.querySelector('.profile-permissions').replaceChildren(...permissions.map((permission) => {
-        const chip = document.createElement('span');
-        chip.className = 'profile-permission';
-        chip.textContent = permission.label || permission.key || permission;
-        return chip;
-      }));
+      const permissionList = permissionCard.querySelector('.profile-permissions');
+      permissionList.id = 'profilePermissionsList';
+      const renderPermissions = (page = 1) => {
+        const pageData = paginateRecords(permissions, page);
+        permissionList.replaceChildren(...pageData.items.map((permission) => {
+          const chip = document.createElement('span');
+          chip.className = 'profile-permission';
+          chip.textContent = permission.label || permission.key || permission;
+          return chip;
+        }));
+        renderPagination('profilePermissionsList', pageData, renderPermissions);
+      };
+      renderPermissions();
       grid.appendChild(permissionCard);
     }
 
@@ -1108,6 +1186,7 @@
     viewTransaction,
     generateReport,
     loadReports,
+    loadShifts,
     openNotifications,
     openProfileMenu,
     refreshDashboard,
@@ -1115,5 +1194,7 @@
     recordActivity,
     loadActivityFeed,
     getLocalAuditRecords,
+    paginateRecords,
+    renderPagination,
   };
 })();

@@ -34,7 +34,7 @@ if ($checkedByUserId > 0) {
 $checkedByName = $checkedByName === '' ? 'Unknown staff' : mb_substr($checkedByName, 0, 150);
 $nullableUserId = $checkedByUserId > 0 ? $checkedByUserId : null;
 $productStmt = $mysqli->prepare('SELECT p.product_id, COALESCE(SUM(s.quantity), 0) AS expected_quantity FROM `product` AS p LEFT JOIN `stock` AS s ON s.product_id = p.product_id WHERE p.product_id = ? AND p.delete_flag = 0 GROUP BY p.product_id');
-$insert = $mysqli->prepare('INSERT INTO `stock_check` (`product_id`, `counted_quantity`, `expected_quantity`, `checked_by_user_id`, `checked_by_name`) VALUES (?, ?, ?, ?, ?)');
+$insert = $mysqli->prepare('INSERT INTO `stock_check` (`product_id`, `counted_quantity`, `expected_quantity`, `variance`, `checked_by_user_id`, `checked_by_name`) VALUES (?, ?, ?, ?, ?, ?)');
 $saved = [];
 
 try {
@@ -54,14 +54,15 @@ try {
         }
 
         $expectedQuantity = (int) $product['expected_quantity'];
-        $insert->bind_param('iiiis', $productId, $countedQuantity, $expectedQuantity, $nullableUserId, $checkedByName);
+        $variance = $countedQuantity - $expectedQuantity;
+        $insert->bind_param('iiiiis', $productId, $countedQuantity, $expectedQuantity, $variance, $nullableUserId, $checkedByName);
         $insert->execute();
         $saved[] = [
             'stockCheckId' => (int) $mysqli->insert_id,
             'productId' => $productId,
             'currentStock' => $countedQuantity,
             'expectedStock' => $expectedQuantity,
-            'variance' => $countedQuantity - $expectedQuantity,
+            'variance' => $variance,
         ];
     }
     $mysqli->commit();

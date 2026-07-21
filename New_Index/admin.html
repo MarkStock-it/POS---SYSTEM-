@@ -473,7 +473,7 @@
     border-radius: 3px;
   }
 </style>
-<link rel="stylesheet" href="dashboard-theme.css?v=5">
+<link rel="stylesheet" href="dashboard-theme.css?v=6">
 </head>
 <body>
 
@@ -533,6 +533,11 @@
         <div class="metric-value" id="metricFlags">Loading…</div>
         <div class="metric-delta down">Awaiting your action</div>
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><div><div class="panel-title">Cashier Shifts</div><div class="page-subtitle">Login, logout, duration, and sales history</div></div></div>
+      <table><thead><tr><th>Shift</th><th>Cashier</th><th>Login</th><th>Logout</th><th>Duration</th><th>Sales</th></tr></thead><tbody id="shiftsTableBody"><tr><td colspan="6" class="empty-state">Loading shifts…</td></tr></tbody></table>
     </section>
 
     <div class="lower-grid">
@@ -671,7 +676,7 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 </script>
 
-<script src="role-dashboard.js?v=12"></script>
+<script src="role-dashboard.js?v=13"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
@@ -683,6 +688,7 @@
     window.fnLoadTransactions?.();
     window.roleDashboard.loadUsers?.('staffTableBody');
     window.roleDashboard.loadReports?.('reportsList', 'reportsPagination');
+    window.roleDashboard.loadShifts?.('shiftsTableBody');
   });
 </script>
 </body>

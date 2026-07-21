@@ -64,7 +64,7 @@ function parseJsonResponse(response) {
 
 const paginationState = {
   currentPage: 1,
-  pageSize: 4,
+  pageSize: 5,
 };
 
 function getVisibleCheckoutItems() {

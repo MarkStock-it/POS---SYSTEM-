@@ -6,7 +6,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/api-auth.php';
 require_once __DIR__ . '/eod-report-lib.php';
 
-requireUser($mysqli, ['admin', 'super_admin']);
+requireUser($mysqli, ['manager', 'admin', 'super_admin']);
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $pageSize = max(1, min(50, (int) ($_GET['pageSize'] ?? 5)));
 $offset = ($page - 1) * $pageSize;

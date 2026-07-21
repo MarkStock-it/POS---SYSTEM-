@@ -519,7 +519,7 @@
   @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
   @media (max-width: 620px) { .settings-fields, .branch-form { grid-template-columns: 1fr; } .settings-field.full { grid-column: auto; } .settings-actions { flex-wrap: wrap; } }
 </style>
-<link rel="stylesheet" href="dashboard-theme.css?v=4">
+<link rel="stylesheet" href="dashboard-theme.css?v=6">
 </head>
 <body>
 
@@ -781,6 +781,7 @@
   });
   let settingsDirty = false;
   let auditRecords = [];
+  let auditPage = 1;
 
   function getSystemSettings() {
     try { return { ...DEFAULT_SYSTEM_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}') || {}) }; }
@@ -881,6 +882,8 @@
   function renderAuditLog() {
     const query = String(document.getElementById('auditSearch')?.value || '').trim().toLowerCase();
     const visible = auditRecords.filter((record) => !query || [record.actorName, record.actorRole, record.actionText, record.entityType, record.entityId].some((value) => String(value || '').toLowerCase().includes(query)));
+    const pageData = window.roleDashboard.paginateRecords(visible, auditPage);
+    auditPage = pageData.page;
     const body = document.getElementById('auditLogTableBody');
     body.replaceChildren();
     document.getElementById('auditResultCount').textContent = `${visible.length} of ${auditRecords.length} event${auditRecords.length === 1 ? '' : 's'}`;
@@ -888,9 +891,11 @@
       const row = document.createElement('tr');
       const cell = document.createElement('td');
       cell.colSpan = 5; cell.className = 'audit-empty'; cell.textContent = query ? 'No audit events match your search.' : 'No audit events have been recorded.';
-      row.appendChild(cell); body.appendChild(row); return;
+      row.appendChild(cell); body.appendChild(row);
+      window.roleDashboard.renderPagination('auditLogTableBody', pageData, () => {});
+      return;
     }
-    visible.forEach((record) => {
+    pageData.items.forEach((record) => {
       const row = document.createElement('tr');
       const values = [
         new Date(String(record.createdAt || '').replace(' ', 'T')).toLocaleString('en-PH'),
@@ -905,6 +910,7 @@
       });
       body.appendChild(row);
     });
+    window.roleDashboard.renderPagination('auditLogTableBody', pageData, (page) => { auditPage = page; renderAuditLog(); });
   }
   async function fnLoadAuditLog() {
     const body = document.getElementById('auditLogTableBody');
@@ -917,7 +923,7 @@
       return;
     }
     try {
-      const url = new URL('../PHP-TEST/audit-log.php?limit=50', window.location.href).pathname + '?limit=50';
+      const url = new URL('../PHP-TEST/audit-log.php?limit=5000', window.location.href).pathname + '?limit=5000';
       const remoteRecords = await window.roleDashboard.fetchJson(url);
       auditRecords = [...(Array.isArray(remoteRecords) ? remoteRecords : []), ...localRecords]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -945,14 +951,15 @@
   function fnLogout() { window.roleDashboard?.logout?.(); }
 
   let managedBranches = [];
-  async function loadBranches() {
+  async function loadBranches(page = 1) {
     const list = document.getElementById('branchList');
     list.innerHTML = '<div class="audit-empty">Loading branches…</div>';
     try {
       const response = await window.roleDashboard.fetchJson('../PHP-TEST/branches.php?active=0');
       managedBranches = Array.isArray(response) ? response : [];
       if (!managedBranches.length) { list.innerHTML = '<div class="audit-empty">No branches have been created.</div>'; return; }
-      list.replaceChildren(...managedBranches.map((branch) => {
+      const pageData = window.roleDashboard.paginateRecords(managedBranches, page);
+      list.replaceChildren(...pageData.items.map((branch) => {
         const row = document.createElement('div');
         row.className = 'branch-row';
         row.innerHTML = '<div><strong></strong><div class="branch-row-meta"></div></div><button class="btn btn-ghost" type="button">Edit</button>';
@@ -961,6 +968,7 @@
         row.querySelector('button').addEventListener('click', () => editBranch(branch.id));
         return row;
       }));
+      window.roleDashboard.renderPagination('branchList', pageData, (nextPage) => loadBranches(nextPage));
     } catch (error) {
       list.innerHTML = '<div class="audit-empty">Unable to load branches.</div>';
       window.roleDashboard?.showDashboardToast?.(error.message || 'Unable to load branches.', 'error');
@@ -994,7 +1002,7 @@
   }
 </script>
 
-<script src="role-dashboard.js?v=12"></script>
+<script src="role-dashboard.js?v=13"></script>
 <script>
   window.addEventListener('DOMContentLoaded', async () => {
     window.roleDashboard.initRoleDashboard({
@@ -1013,7 +1021,7 @@
     document.getElementById('cancelBranchEdit').addEventListener('click', resetBranchForm);
     settingsForm.addEventListener('input', () => setSettingsDirty(true));
     settingsForm.addEventListener('change', () => setSettingsDirty(true));
-    document.getElementById('auditSearch').addEventListener('input', renderAuditLog);
+    document.getElementById('auditSearch').addEventListener('input', () => { auditPage = 1; renderAuditLog(); });
     settingsForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;

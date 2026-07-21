@@ -133,6 +133,7 @@ function ensureSchema($mysqli) {
                 `product_id` INT NOT NULL,
                 `counted_quantity` INT NOT NULL,
                 `expected_quantity` INT NOT NULL,
+                `variance` INT NOT NULL DEFAULT 0,
                 `checked_by_user_id` INT DEFAULT NULL,
                 `checked_by_name` VARCHAR(150) DEFAULT NULL,
                 `checked_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -291,6 +292,8 @@ function ensureSchema($mysqli) {
         $addColumn('user', 'pin_hash', 'VARCHAR(255) DEFAULT NULL AFTER `employment_status`');
         $addColumn('user', 'last_login_at', 'TIMESTAMP NULL DEFAULT NULL AFTER `pin_hash`');
         $addColumn('cashier_shift', 'shift_duration_seconds', 'INT UNSIGNED DEFAULT NULL AFTER `time_out`');
+        $addColumn('stock_check', 'variance', 'INT NOT NULL DEFAULT 0 AFTER `expected_quantity`');
+        $mysqli->query('UPDATE `stock_check` SET `variance` = `counted_quantity` - `expected_quantity`');
 
         $mysqli->query(
             "CREATE TABLE IF NOT EXISTS `user_device` (

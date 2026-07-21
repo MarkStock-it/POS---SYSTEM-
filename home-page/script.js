@@ -17,7 +17,40 @@ const state = {
   pendingImageDataUrl: '',
   pendingImageFile: null,
   manualPriceMode: false,
+  pagination: { products: 1, inventory: 1, categories: 1, categoryPills: 1, cart: 1 },
 };
+
+const DEFAULT_PAGE_SIZE = 5;
+
+function paginateRecords(records, pageKey) {
+  const items = Array.isArray(records) ? records : [];
+  const totalPages = Math.max(1, Math.ceil(items.length / DEFAULT_PAGE_SIZE));
+  const page = Math.min(Math.max(1, Number(state.pagination[pageKey]) || 1), totalPages);
+  state.pagination[pageKey] = page;
+  const start = (page - 1) * DEFAULT_PAGE_SIZE;
+  return { items: items.slice(start, start + DEFAULT_PAGE_SIZE), page, totalPages };
+}
+
+function renderPageControls(targetId, pageKey, pageData, rerender, canChangePage = null) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  let controls = document.getElementById(`${targetId}Pagination`);
+  if (!controls) {
+    controls = document.createElement('nav'); controls.id = `${targetId}Pagination`; controls.className = 'app-pagination';
+    controls.setAttribute('aria-label', `${targetId} pagination`); (target.closest('table') || target).insertAdjacentElement('afterend', controls);
+  }
+  controls.replaceChildren();
+  if (pageData.totalPages <= 1) return;
+  const addButton = (label, destination, disabled, active = false) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = `app-page-button${active ? ' active' : ''}`;
+    button.textContent = label; button.disabled = disabled;
+    button.addEventListener('click', () => { if (canChangePage && !canChangePage()) return; state.pagination[pageKey] = destination; rerender(); });
+    controls.appendChild(button);
+  };
+  addButton('Prev', pageData.page - 1, pageData.page <= 1);
+  for (let index = 1; index <= pageData.totalPages; index += 1) addButton(String(index), index, false, index === pageData.page);
+  addButton('Next', pageData.page + 1, pageData.page >= pageData.totalPages);
+}
 
 const fallbackImage = '/images/placeholder.svg';
 
@@ -359,6 +392,7 @@ function renderCategoryPills() {
       ...state.customCategories.map((category) => category.toLowerCase()),
     ]),
   ).sort();
+  const pageData = paginateRecords(categories, 'categoryPills');
   const pillsContainer = document.getElementById('categoryPills');
   pillsContainer.innerHTML = '';
 
@@ -373,7 +407,7 @@ function renderCategoryPills() {
   };
 
   pillsContainer.appendChild(createPill('all', 'All Items'));
-  categories.forEach((category) => {
+  pageData.items.forEach((category) => {
     const normalized = category.trim();
     if (!normalized) return;
     const label = normalized.replace(/\b\w/g, (chr) => chr.toUpperCase());
@@ -381,19 +415,22 @@ function renderCategoryPills() {
   });
 
   setButtonActive(Array.from(pillsContainer.querySelectorAll('.pill')), state.selectedCategory);
+  renderPageControls('categoryPills', 'categoryPills', pageData, renderCategoryPills);
 }
 
 function renderProductGrid() {
   const grid = document.getElementById('productGrid');
   const products = getFilteredProducts();
+  const pageData = paginateRecords(products, 'products');
 
   grid.innerHTML = '';
   if (!products.length) {
     grid.innerHTML = '<div class="table-note">No products match your search or selected category.</div>';
+    renderPageControls('productGrid', 'products', pageData, renderProductGrid);
     return;
   }
 
-  products.forEach((product) => {
+  pageData.items.forEach((product) => {
     const card = document.createElement('article');
     card.className = 'product-card';
     card.innerHTML = `
@@ -414,6 +451,7 @@ function renderProductGrid() {
     });
     grid.appendChild(card);
   });
+  renderPageControls('productGrid', 'products', pageData, renderProductGrid);
 }
 
 function renderCart() {
@@ -432,11 +470,13 @@ function renderCart() {
 
   if (!state.cart.length) {
     cartContainer.innerHTML = '<div class="table-note">Your cart is empty. Add items from the product list to begin.</div>';
+    renderPageControls('cartItemsContainer', 'cart', paginateRecords([], 'cart'), renderCart);
     return;
   }
 
   cartContainer.innerHTML = '';
-  state.cart.forEach((item) => {
+  const pageData = paginateRecords(state.cart, 'cart');
+  pageData.items.forEach((item) => {
     const cartItem = document.createElement('article');
     cartItem.className = 'cart-item';
     cartItem.innerHTML = `
@@ -508,6 +548,7 @@ function renderCart() {
     });
     cartContainer.appendChild(cartItem);
   });
+  renderPageControls('cartItemsContainer', 'cart', pageData, renderCart);
 }
 
 function calculateTotals() {
@@ -528,6 +569,7 @@ function addToCart(productId, productOverride = null) {
   const cartItem = state.cart.find((item) => String(item.productId) === String(product.id));
   if (cartItem) {
     cartItem.quantity += 1;
+    state.pagination.cart = Math.floor(state.cart.indexOf(cartItem) / DEFAULT_PAGE_SIZE) + 1;
   } else {
     state.cart.push({
       productId: product.id,
@@ -536,6 +578,7 @@ function addToCart(productId, productOverride = null) {
       unitPrice: product.price,
       quantity: 1,
     });
+    state.pagination.cart = Math.ceil(state.cart.length / DEFAULT_PAGE_SIZE);
   }
 
   renderCart();
@@ -703,11 +746,15 @@ function fetchProducts() {
 function searchProducts() {
   state.productSearch = document.getElementById('productSearchInput').value.trim();
   state.inventorySearch = document.getElementById('inventorySearch').value.trim();
+  state.pagination.products = 1;
+  state.pagination.inventory = 1;
   return fetchProducts();
 }
 
 function filterCategory(category) {
   state.selectedCategory = category;
+  state.pagination.products = 1;
+  state.pagination.inventory = 1;
   renderCategoryPills();
   renderProductGrid();
   renderInventoryTable();
@@ -715,6 +762,8 @@ function filterCategory(category) {
 
 function filterStock(type) {
   state.activeStockFilter = type;
+  state.pagination.products = 1;
+  state.pagination.inventory = 1;
   document.querySelectorAll('#inventoryFilters .pill').forEach((button) => {
     const value = button.dataset.value || button.textContent.trim().toLowerCase().split(' ')[0];
     button.classList.toggle('active', value === type);
@@ -726,15 +775,17 @@ function filterStock(type) {
 function renderInventoryTable() {
   const inventoryTable = document.getElementById('inventoryTableBody');
   const filteredProducts = getFilteredProducts();
+  const pageData = paginateRecords(filteredProducts, 'inventory');
 
   if (!filteredProducts.length) {
-    inventoryTable.innerHTML = '<tr><td class="table-note" colspan="8">No inventory items match these filters.</td></tr>';
+    inventoryTable.innerHTML = '<tr><td class="table-note" colspan="9">No inventory items match these filters.</td></tr>';
+    renderPageControls('inventoryTableBody', 'inventory', pageData, renderInventoryTable);
     return;
   }
 
-  inventoryTable.innerHTML = filteredProducts
+  inventoryTable.innerHTML = pageData.items
     .map((product) => `
-      <tr>
+      <tr class="${Number(product.stock) <= 0 ? 'stock-out-row' : Number(product.stock) <= Number(getPosSettings().lowStockThreshold ?? 10) ? 'stock-low-row' : ''}">
         <td><img class="table-image" src="${product.image || fallbackImage}" alt="${product.name}" onerror="this.onerror=null;this.src='${fallbackImage}'" /></td>
         <td>${product.name}</td>
         <td>${product.category}</td>
@@ -745,8 +796,9 @@ function renderInventoryTable() {
           <div class="stock-check-control">
             <input id="currentStock-${product.id}" class="stock-check-input" data-product-id="${product.id}" type="number" min="0" step="1" value="${product.currentStock ?? ''}" placeholder="Enter count" aria-label="Current physical stock for ${product.name}" oninput="markCurrentStockChanged(this)" />
           </div>
-          ${product.stockVariance === null || product.stockVariance === undefined ? '<small class="stock-check-note">Not checked</small>' : `<small class="stock-check-note ${product.stockVariance === 0 ? 'matches' : 'mismatch'}">Variance: ${product.stockVariance > 0 ? '+' : ''}${product.stockVariance}</small>`}
+          ${product.currentStock === null || product.currentStock === undefined ? '<small class="stock-check-note">Not checked</small>' : '<small class="stock-check-note matches">Checked</small>'}
         </td>
+        <td class="variance-cell ${product.stockVariance === null || product.stockVariance === undefined ? '' : product.stockVariance === 0 ? 'matches' : 'mismatch'}">${product.stockVariance === null || product.stockVariance === undefined ? '—' : `${product.stockVariance > 0 ? '+' : ''}${product.stockVariance}`}</td>
         <td class="actions-cell">
           <div class="table-actions">
             <button class="table-button" type="button" onclick="editProduct('${product.id}')">Edit</button>
@@ -756,6 +808,13 @@ function renderInventoryTable() {
       </tr>
     `)
     .join('');
+  renderPageControls('inventoryTableBody', 'inventory', pageData, renderInventoryTable, () => {
+    if (document.querySelector('.stock-check-input[data-changed="true"]')) {
+      showToast('Save changed stock counts before changing pages.', 'danger');
+      return false;
+    }
+    return true;
+  });
 }
 
 function updateStockChangesStatus() {
@@ -845,6 +904,7 @@ function renderCategoryList() {
       ...state.customCategories.map((category) => category.trim()).filter(Boolean),
     ]),
   ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const pageData = paginateRecords(categories, 'categories');
 
   categoryList.innerHTML = '';
 
@@ -863,13 +923,14 @@ function renderCategoryList() {
   };
 
   categoryList.appendChild(createCategoryButton('all', 'All'));
-  categories.forEach((category) => {
+  pageData.items.forEach((category) => {
     const normalized = category.trim();
     if (!normalized) return;
     categoryList.appendChild(createCategoryButton(normalized.toLowerCase(), normalized));
   });
 
   setButtonActive(Array.from(categoryList.querySelectorAll('.category-chip')), state.selectedCategory);
+  renderPageControls('categoryList', 'categories', pageData, renderCategoryList);
 }
 
 function addCategory() {

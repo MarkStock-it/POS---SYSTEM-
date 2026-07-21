@@ -976,11 +976,16 @@ app.post('/api/checkout', checkAuth, async (req, res) => {
 
 app.get('/api/transactions', async (req, res) => {
   try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.max(1, Math.min(100, Number.parseInt(req.query.pageSize, 10) || 5));
+    const offset = (page - 1) * pageSize;
+    const [countRow] = await db.all('SELECT COUNT(*) AS total FROM transactions');
     const rows = await db.all(`SELECT t.id, t.created_at, t.payment_method, t.subtotal, t.discount, t.tax, t.total,
         (SELECT COUNT(*) FROM transaction_items WHERE transaction_id = t.id) AS item_count
       FROM transactions t
-      ORDER BY t.created_at DESC LIMIT 20`);
-    res.json(rows);
+      ORDER BY t.created_at DESC LIMIT ? OFFSET ?`, [pageSize, offset]);
+    const total = Number(countRow?.total || 0);
+    res.json({ records: rows, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) });
   } catch (error) {
     console.error('Failed to load transactions:', error.message);
     return res.status(500).json({ error: 'Unable to load transactions' });

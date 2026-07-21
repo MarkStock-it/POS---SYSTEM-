@@ -8,7 +8,7 @@ $actor = requireUser($mysqli, ['admin', 'super_admin']);
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
-    $limit = max(1, min(50, (int) ($_GET['limit'] ?? 10)));
+    $limit = max(1, min(5000, (int) ($_GET['limit'] ?? 5)));
     $stmt = $mysqli->prepare('SELECT audit_id AS id, actor_name AS actorName, actor_role AS actorRole, action_text AS actionText, entity_type AS entityType, entity_id AS entityId, created_at AS createdAt FROM `audit_log` ORDER BY created_at DESC, audit_id DESC LIMIT ?');
     $stmt->bind_param('i', $limit);
     $stmt->execute();

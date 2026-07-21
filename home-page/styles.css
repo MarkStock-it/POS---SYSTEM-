@@ -500,6 +500,10 @@ html[data-theme="dark"] .remove-button {
 /* payments */
 .payment-grid { display:grid; gap:12px; }
 .checkout-cash-notice { margin: 0; color: var(--muted); font-size: .86rem; font-weight: 650; text-align: center; }
+.app-pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 12px; }
+.app-page-button { min-width: 36px; min-height: 36px; padding: 7px 10px; border: 1px solid rgba(148,163,184,.28); border-radius: 10px; color: var(--text); background: var(--card-strong, #fff); cursor: pointer; }
+.app-page-button.active { border-color: var(--primary); color: #fff; background: var(--primary); }
+.app-page-button:disabled { opacity: .45; cursor: not-allowed; }
 .secondary-actions { display:grid; gap:12px; }
 
 /* inventory layout */
@@ -607,6 +611,13 @@ html[data-theme="dark"] .remove-button {
 .stock-check-note { display:block; margin-top:6px; color:var(--muted); font-size:0.76rem; white-space:nowrap; }
 .stock-check-note.matches { color:var(--success); }
 .stock-check-note.mismatch { color:var(--danger); }
+.variance-cell { font-weight:800; font-variant-numeric:tabular-nums; }
+.variance-cell.matches { color:var(--success); }
+.variance-cell.mismatch { color:var(--danger); }
+.page-inventory .inventory-table tbody tr.stock-low-row > td { background:rgba(249,115,22,.09); }
+.page-inventory .inventory-table tbody tr.stock-out-row > td { background:rgba(239,68,68,.09); }
+.page-inventory .inventory-table tbody tr.stock-low-row:hover > td { background:rgba(249,115,22,.15); }
+.page-inventory .inventory-table tbody tr.stock-out-row:hover > td { background:rgba(239,68,68,.15); }
 
 #markupSlider { appearance:none; -webkit-appearance:none; width:100%; height:7px; border-radius:999px; outline:none; background:linear-gradient(90deg, var(--primary), rgba(37,99,235,0.18)); cursor:pointer; }
 #markupSlider::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:22px; height:22px; border:4px solid var(--card-strong); border-radius:50%; background:var(--primary); box-shadow:0 3px 12px rgba(37,99,235,0.35); cursor:grab; transition:transform var(--transition-fast), box-shadow var(--transition-fast); }
@@ -653,6 +664,10 @@ html[data-theme="dark"] .page-inventory .inventory-table th { background:#111c2d
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:nth-child(odd) { background:rgba(15,23,42,.72); }
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:nth-child(even) { background:rgba(30,41,59,.45); }
 html[data-theme="dark"] .page-inventory .inventory-table tbody tr:hover { background:rgba(37,99,235,.12); }
+html[data-theme="dark"] .page-inventory .inventory-table tbody tr.stock-low-row > td { background:rgba(249,115,22,.12); }
+html[data-theme="dark"] .page-inventory .inventory-table tbody tr.stock-out-row > td { background:rgba(239,68,68,.13); }
+html[data-theme="dark"] .page-inventory .inventory-table tbody tr.stock-low-row:hover > td { background:rgba(249,115,22,.2); }
+html[data-theme="dark"] .page-inventory .inventory-table tbody tr.stock-out-row:hover > td { background:rgba(239,68,68,.21); }
 html[data-theme="dark"] .page-inventory .inventory-table-toolbar {
   background:rgba(15,23,42,.88);
   border-color:rgba(148,163,184,.18);
